@@ -1,0 +1,4 @@
+name: Metabolomics Workflow - Omics
+description: >
+   This is the metabolomcis data analysis workflow for omics.
+create_dir: false

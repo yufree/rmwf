@@ -1,0 +1,415 @@
+---
+title: "PMDDA Meta-Workflow"
+author: "Miao Yu"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    df_print: paged
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,cache = T,message=T,warning=F)
+library(rmwf)
+sessionInfo()
+```
+
+# Demo data
+
+Five SRM 1950 samples and six matrix blank samples were used as demo data
+
+```{r download}
+# Download demo data from figshare
+library(rfigshare)
+dir.create(file.path('data'), showWarnings = FALSE)
+setwd(file.path('data'))
+# NIST1950 postive data
+dir.create(file.path('NIST1950'), showWarnings = FALSE)
+setwd(file.path('NIST1950'))
+article_id <- 11952558
+details <- fs_details(article_id)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+setwd('..')
+# matrix positive data
+dir.create(file.path('Matrix'), showWarnings = FALSE)
+setwd(file.path('Matrix'))
+article_id <- 11952561
+details <- fs_details(article_id)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+setwd('..')
+path <- getwd()
+files <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
+# DDA positive data
+setwd('..')
+dir.create(file.path('DDA'), showWarnings = FALSE)
+setwd(file.path('DDA'))
+article_id <- 11952555
+details <- fs_details(article_id)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+path <- getwd()
+ddafile <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
+# PMDDA positive data
+setwd('..')
+dir.create(file.path('PMDDA'), showWarnings = FALSE)
+setwd(file.path('PMDDA'))
+article_id <- 11952549
+details <- fs_details(article_id)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+path <- getwd()
+pmddafile <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
+```
+
+The data could be subset by msconvert to avoid peaks with low quality(co-elution and column washing phase). You need to install docker and pull the docker image from msconvert.
+
+```{bash eval=F}
+docker pull chambm/pwiz-skyline-i-agree-to-the-vendor-licenses
+for f in $(basename path/*.mzML)
+do
+  docker run -it --rm -e WINEDEBUG=-all -v path/:/data chambm/pwiz-skyline-i-agree-to-the-vendor-licenses wine msconvert /data/$f --filter "scanTime [60,1080]"
+done
+```
+
+# Optimization of XCMS
+
+This chunk should run first to generate XCMS parameters. We suggest a computer with large memory to run this chunk for IPO package.
+
+## IPO
+
+```{r IPOpos,eval=FALSE}
+library(IPO)
+library(xcms)
+peakpickingParameters <- getDefaultXcmsSetStartingParams('centWave')
+# Uncomment this line to use your own data(suggested 3-5 pooled QC samples)
+# path <- 'path/to/your/files'
+# change to 5 for obitrap
+peakpickingParameters$ppm <- 10
+resultPeakpicking <- 
+  optimizeXcmsSet(files = files[c(7,9,11)], 
+                  params = peakpickingParameters,
+                  plot = F,
+                  subdir = NULL)
+
+optimizedXcmsSetObject <- resultPeakpicking$best_settings$xset
+retcorGroupParameters <- getDefaultRetGroupStartingParams()
+resultRetcorGroup <-
+  optimizeRetGroup(xset = optimizedXcmsSetObject, 
+                   params = retcorGroupParameters, 
+                   plot = F,
+                   subdir = NULL)
+para <- c(resultPeakpicking$best_settings$parameters, 
+          resultRetcorGroup$best_settings)
+save(para,file = 'para.RData')
+```
+
+## Wrap function for peak picking
+
+This chunk could be run after you have `para.RData` from last chunk.
+
+```{r eval=FALSE}
+library(xcms)
+# here we use pre-optimized IPO parameters
+data('para')
+# Or you could load your own set from last chunk
+load('para.RData')
+getrtmz <- function(path,index = NULL){
+  files <- list.files(path,pattern = ".CDF|.mzXML|.mzML",full.names = T,recursive = T)
+  if(!is.null(index)){
+    files<- files[index]
+    }
+  group <- xcms:::phenoDataFromPaths(files)
+  if(NCOL(group)==1){
+      sample_group <- group$class
+  }else{
+      cols <- colnames(group)
+      sample_group <-  do.call(paste,c(group[cols],sep='_'))
+  }
+  sample_name=sub(basename(files),pattern = ".CDF|.mzXML|.mzML",replacement = '')
+  pd <- cbind.data.frame(sample_name, sample_group)
+  
+  raw_data <- readMSData(files = files, pdata = new("NAnnotatedDataFrame", pd),
+                       mode = "onDisk")
+  # remove co-elution and column wash phase
+  # filter_data <- filterRt(raw_data,rt = c(100,900))
+  cwp <- CentWaveParam(peakwidth = c(para$min_peakwidth,para$max_peakwidth), 
+                       ppm             = para$ppm,
+                       noise           = para$noise,
+                       snthresh        = para$snthresh,
+                       mzdiff          = para$mzdiff,
+                       prefilter       = c(para$prefilter,para$value_of_prefilter),
+                       mzCenterFun     = para$mzCenterFun,
+                       integrate       = para$integrate,
+                       fitgauss        = para$fitgauss,
+                       verboseColumns  = para$verbose.columns)
+  owp <- ObiwarpParam(binSize        = para$profStep,
+                      centerSample   = para$center,
+                      response       = para$response,
+                      distFun        = para$distFunc,
+                      gapInit        = para$gapInit,
+                      gapExtend      = para$gapExtend,
+                      factorDiag     = para$factorDiag,
+                      factorGap      = para$factorGap,
+                      localAlignment = ifelse(para$localAlignment==0,F,T))
+  pdp <- PeakDensityParam(sampleGroups = pd$sample_group,
+                        bw      = para$bw,
+                        minFraction = para$minfrac,
+                        minSamples = para$minsamp,
+                        maxFeatures = para$max,
+                        binSize = para$mzwid)
+
+  xdata <- findChromPeaks(raw_data, param = cwp)
+  # xdata <- findChromPeaks(filter_data, param = cwp)
+  xdata <- adjustRtime(xdata, param = owp)
+  xdata <- groupChromPeaks(xdata, param = pdp)
+  xdata <- fillChromPeaks(xdata)
+  return(xdata)
+}
+```
+
+# Peaks list
+
+This chunk is used to generate peaks list and related csv, xcmsset object, xcmsEIC object for further analysis.
+
+```{r eval=F}
+# use your own data
+# path <- 'path/to/your/file'
+srm <- getrtmz(path)
+# back up the xcmsset object, xcmsEIC object and peak list
+mzrt <- enviGCMS::getmzrt(srm, name = 'srm', eic = T, type = 'mapo')
+```
+
+# Peaks filtering
+
+Peaks list could be processed by experimental design in thie chunk.
+
+```{r pf}
+data(mzrt)
+# get the mean and rsd for each group
+mzrtm <- enviGCMS::getdoe(mzrt)
+gm <- mzrtm$groupmean
+gr <- mzrtm$grouprsd
+# find the blank group and pool QC group, demo data only have matrix blank
+srm <- grepl('NIST',colnames(gm))
+blk <- grepl('Matrix',colnames(gm))
+# pqc <- grepl('pool',colnames(gm))
+# filter by pool QC and blank's group mean intensity(pool QC should larger than three times of blank), return numbers and index
+# in demo data, use sample average intensity for each peak
+sum(indexmean <- apply(gm,1,function(x) all(x[srm]>= 3*x[blk])))
+# filter by pool qc rsd%, return numbers and index
+# select rsd% cutoff 30
+rsdcf <- 30
+sum(indexrsd <- apply(gr,1,function(x) ifelse(is.na(x[srm]),T,x[srm]<rsdcf)))
+# overlap with rsd% and mean filter
+sum(index <- indexmean&indexrsd)
+
+# new list, update group and remove pool qc/blk and save the new csv file
+qcindex <- grepl('blank',mzrt$group) | grepl('pool',mzrt$group)
+mzrtfilter <- enviGCMS::getfilter(mzrt,rowindex = index,colindex = !qcindex, name = 'lif', type = 'm')
+```
+
+# DDA MS/MS
+
+```{r}
+library(xcms)
+dda_data <- MSnbase::readMSData(ddafile, mode = "onDisk")
+cwp <- xcms::CentWaveParam(snthresh = 5, noise = 100, ppm = 10,
+                     peakwidth = c(3, 30))
+dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
+dda_spectra <- chromPeakSpectra(dda_data)
+# check precursor ions
+ex_mz <- 97.97
+chromPeaks(dda_data, mz = ex_mz, ppm = 20)
+ex_id <- rownames(chromPeaks(dda_data, mz = ex_mz, ppm = 20))
+ex_spectra <- dda_spectra[mcols(dda_spectra)$peak_id %in% ex_id]
+ex_spectrum <- combineSpectra(ex_spectra, method = consensusSpectrum, mzd = 0,
+                              ppm = 20, minProp = 0.8, weighted = FALSE,
+                              intensityFun = median, mzFun = median)
+plot(ex_spectrum[[1]])
+# output mgf
+# MSnbase::writeMgfData(ex_spectrum,'dda.mgf')
+```
+
+# PMDDA analysis
+
+## Generate MS/MS peaks list
+
+Generate targeted list for MS/MS analysis from pmd analysis
+
+```{r eval=F}
+x <- pmd::globalstd(mzrtfilter,ng=NULL)
+
+pmdtarget <- function(list,Dppm = 20,Drt = 0.5,ce = NA, name = 'target',n=NULL){
+        head <-  c('On', 'Prec. m/z', 'Z','Ret. Time (min)', 'Delta Ret. Time (min)', 'Iso. Width', 'Collision Energy')
+        mz <- list$mz[list$stdmassindex]
+        rt <- round(list$rt[list$stdmassindex]/60,3)
+        temp = cbind('TRUE',mz,1,rt,Drt,'Narrow (~1.3 m/z)',ce)
+        data <- rbind(head,temp)
+        colnames(data) <- c('TargetedMSMSTable',rep('',6))
+
+        if(is.null(n)){
+                name2 <- paste0(name,'.csv')
+                utils::write.table(data,file = name2,row.names = F,col.names = F,sep=",")
+
+        }else{
+                idx <- targetsep(list$rt[list$stdmassindex],Drt,n)
+                for(i in 1:length(table(idx))){
+                        namei <- paste0(name,i,'.csv')
+                        idx2 <- idx == i
+                        idx3 <- c(T,idx2)
+                        datai <- data[idx3,]
+                        utils::write.table(datai,file = namei,row.names = F,col.names = F,sep=",")
+                }
+        }
+
+        return(data)
+}
+
+targetsep <- function(rt,Drt,n=6){
+        D <- Drt*60
+        dis <- stats::dist(rt, method = "manhattan")
+        fit <- stats::hclust(dis)
+        inji <- rtcluster <- stats::cutree(fit, h = D)
+        maxd <- max(table(rtcluster))
+        m <- length(unique(rtcluster))
+        inj <- ceiling(maxd/n)
+        message(paste('You need',inj,'injections!'))
+        for(i in c(1:m)) {
+                z = 1:inj
+                x <- rt[rtcluster==i]
+                while(length(x) > inj & length(x)>n){
+                        t <- sample(x,n)
+                        w <- sample(z,1)
+                        inji[rt %in% t] <- w
+                        z <- z[!(z%in%w)]
+                        x <- x[!(x %in% t)]
+                }
+                inji[rtcluster==i & rt %in% x] <- sample(z,sum(rtcluster==i & rt %in% x),replace = T)
+        }
+        return(inji)
+}
+
+zzz <- pmdtarget(x,n=6,Drt = 0.2,ce=20)
+```
+
+## Extract mgf files
+
+```{r eval=F}
+# run the first download chunk to get the files path
+library(xcms)
+dda_data <- MSnbase::readMSData(pmddafile, mode = "onDisk")
+cwp <- xcms::CentWaveParam(snthresh = 5, noise = 100, ppm = 10,
+                     peakwidth = c(3, 30))
+dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
+dda_spectra <- chromPeakSpectra(dda_data)
+# get mgf for each compounds
+ex_mz <- precursorMz(dda_spectra)
+# check precursor ions
+for(i in 1:length(ex_mz)){
+  ex_id <- rownames(chromPeaks(dda_data, mz = ex_mz[i], ppm = 10))
+  if(sum(mcols(dda_spectra)$peak_id %in% ex_id)!=0){
+    ex_spectra <- dda_spectra[mcols(dda_spectra)$peak_id %in% ex_id]
+    ex_spectrum <- combineSpectra(ex_spectra, method = consensusSpectrum, mzd = 0,
+                              ppm = 10, minProp = 0.05, weighted = FALSE,
+                              intensityFun = median, mzFun = median)
+    name <- paste0('pmdda',i,'.mgf')
+    writeMgfData(ex_spectrum,name)
+  }
+}
+# compare with dda
+dda_data <- MSnbase::readMSData(ddafile, mode = "onDisk")
+cwp <- xcms::CentWaveParam(snthresh = 5, noise = 100, ppm = 10,
+                     peakwidth = c(3, 30))
+dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
+dda_spectra <- chromPeakSpectra(dda_data)
+# get mgf for each compounds
+data(mzrt)
+range <- cbind.data.frame(mzrt$mzrange,mzrt$rtrange)
+# check precursor ions
+for(i in 1:nrow(range)){
+  ex_id <- rownames(chromPeaks(dda_data, mz = range[i,c("mzmin", "mzmax" )],rt=range[i,c("rtmin", "rtmax")], ppm = 10))
+  if(sum(mcols(dda_spectra)$peak_id %in% ex_id)!=0){
+    ex_spectra <- dda_spectra[mcols(dda_spectra)$peak_id %in% ex_id]
+    ex_spectrum <- combineSpectra(ex_spectra, method = consensusSpectrum, mzd = 0,
+                              ppm = 10, minProp = 0.05, weighted = FALSE,
+                              intensityFun = median, mzFun = median)
+    name <- paste0('dda',i,'.mgf')
+    writeMgfData(ex_spectrum,name)
+  }
+}
+## upload here
+## https://gnps.ucsd.edu/
+```
+
+# Formula assign
+
+```{r}
+data(mzrt)
+library(Rdisop)
+# isotop group formula assign
+p1 <- pmd::getpaired(mzrt)
+pi <- enviGCMS::getfilter(mzrt,rowindex = p1$isoindex)
+rtg <- p1$rtcluster[p1$isoindex]
+iso <- p1$iso
+formula <- list()
+for (i in 1:length(unique(iso$rtg))){
+  isoi <- iso[iso$rtg == unique(iso$rtg)[i],]
+  insi <- rowSums(pi$data[rtg==unique(iso$rtg)[i],],na.rm = T)
+  mzi <- round(pi$mz[rtg==unique(iso$rtg)[i]],4) 
+  net <- igraph::graph_from_data_frame(isoi,directed = F)
+  group <- igraph::groups(igraph::components(net))
+  groupi <- list()
+  for (j in 1:length(group)) {
+    mz <- round(as.numeric(group[[j]]),4)
+    inst <- insi[mzi%in%mz]
+    molecules <- decomposeIsotopes(masses = mz, intensities = inst,elements = initializeElements(c("C","H","N","O","P")))
+    if(!is.null(molecules)){
+      Formula <- getFormula(molecules)
+      Formulav <- Formula[getValid(molecules)=='Valid']
+      groupi[[j]] <- Formulav
+    }
+  }
+  formula[[i]] <- groupi
+}
+
+# mass formula assign
+p2 <- pmd::getstd(p1)
+mass <- p2$mz[p2$stdmassindex]
+massf <- list()
+for(i in 1:sum(p2$stdmassindex)){
+  molecules <- decomposeMass(mass = mass[i],elements = initializeElements(c("C","H","N","O","P")))
+  if(!is.null(molecules)){
+      Formula <- getFormula(molecules)
+      Formulav <- Formula[getValid(molecules)=='Valid']
+      massf[[i]] <- Formulav
+    }
+}
+
+```
+
+# MS/MS Local Annotation
+
+Use HMDB MS/MS database to annotate compounds.
+
+```{r}
+data("qtof")
+# this is the sepctra of HMDB0034004
+file <- system.file("extdata", "challenge-msms.mgf", package = "rmwf")
+# dot product similarity
+anno1 <- enviGCMS::dotpanno(file,db = qtof)
+unique(anno1$name)
+# X rank algorithm
+anno2 <- enviGCMS::xrankanno(file,db = qtof)
+unique(anno2$name)
+# pmd msms annotation
+anno3 <- pmd::pmdanno(file,db=qtof)
+unique(anno2$name)
+enviGCMS::plotanno(anno3)
+```

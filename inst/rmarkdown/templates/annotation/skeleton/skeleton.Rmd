@@ -1,0 +1,281 @@
+---
+title: "Annotation"
+author: "Miao Yu"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    df_print: paged
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Demo data
+
+We prepared 5 NIST 1950 samples and 6 matrix blank samples as demodata.
+
+```{r}
+library(rmwf)
+data("mzrt")
+```
+
+## CAMERA
+
+```{r}
+library(CAMERA)
+data("srmxset")
+data("srmeic")
+path <- system.file("extdata/data", package = "rmwf")
+srmxset@filepaths <- list.files(path,full.names = T,recursive = T)
+
+xsa <- CAMERA::annotate(srmxset, perfwhm=0.7, cor_eic_th=0.75,
+ppm=10, polarity="positive")
+# get the peaklist with annotation
+peaklist <- CAMERA::getPeaklist(xsa)
+```
+
+## Ramcluster
+
+```{r}
+library(RAMClustR)
+rcp <- RAMClustR::ramclustR(srmxset)
+# get the peaklist with annotation
+RC <- RAMClustR::do.findmain(rcp, mode = "positive", mzabs.error = 0.02, ppm.error = 10)
+meanpeak <- apply(t(rcp$MSdata),1,mean)
+df <-  cbind.data.frame(mz = rcp$fmz, rt = rcp$frt, cluster = rcp$featclus,meanpeak)
+```
+
+## pmd
+
+```{r}
+library(pmd)
+# pmd
+mzrt <- enviGCMS::getmzrt(srmxset)
+# get the peaklist
+mzrt <- pmd::globalstd(mzrt,ng=NULL)
+```
+
+## GNPS FBMN
+
+```{r eval=FALSE}
+library(xcms)
+# more DDA files
+dda_data <- MSnbase::readMSData(file, mode = "onDisk")
+cwp <- xcms::CentWaveParam(snthresh = 5, noise = 100, ppm = 10,
+                     peakwidth = c(3, 30))
+dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
+processedData <- adjustRtime(dda_data, param = ObiwarpParam())
+pdp <- PeakDensityParam(sampleGroups = c(1:15),
+                        minFraction = 0.05)
+processedData <- groupChromPeaks(processedData, param = pdp)
+medWidth <- median(chromPeaks(processedData)[, "rtmax"] -
+                   chromPeaks(processedData)[, "rtmin"])
+## fill missing peaks
+processed_Data <- fillChromPeaks(
+    processedData, param = FillChromPeaksParam(fixedRt = medWidth))
+
+filteredMs2Spectra <- featureSpectra(processed_Data, return.type = "Spectra")
+filteredMs2Spectra <- clean(filteredMs2Spectra, all = TRUE)
+formatSpectraForGNPS <- function(x) {
+    fids <- mcols(x)$feature_id
+    if (!length(fids))
+        stop("No column named 'feature_id' present in 'mcols(x)'")
+    fids <- as.integer(sub("^FT", "", fids))
+    mendoapply(x, fids, FUN = function(z, id) {
+        z@acquisitionNum <- id
+        z
+    })
+}
+filteredMs2Spectra <- formatSpectraForGNPS(filteredMs2Spectra)
+writeMgfData(filteredMs2Spectra, "ms2spectra_all.mgf")
+
+featuresDef <- featureDefinitions(processedData)
+featuresIntensities <- featureValues(processedData, value = "into")
+dataTable <- merge(featuresDef, featuresIntensities, by = 0, all = TRUE)
+dataTable <- dataTable[, !(colnames(dataTable) %in% c("peakidx"))]
+write.table(dataTable, "xcms_all.txt", sep = "\t", quote = FALSE,
+            row.names = FALSE)
+## upload here for GNPS FBMN
+## https://gnps.ucsd.edu/ProteoSAFe/index.jsp?params=%7B%22workflow%22:%22FEATURE-BASED-MOLECULAR-NETWORKING%22,%22library_on_server%22:%22d.speclibs;%22%7D
+
+```
+
+
+## xMSannotator
+
+```{r anno, eval=F}
+library(xMSannotator)
+data("adduct_weights")
+data <- mzrt$data
+mz <- mzrt$mz
+time <- mzrt$rt
+data <- as.data.frame(cbind(mz, time, data))
+data <- unique(data)
+num_nodes = 4
+xMSannotator::multilevelannotation(
+                                        dataA = data,
+                                        max.mz.diff = 5,
+                                        mode = 'pos',
+                                        outloc = './',
+                                        db_name = 'HMDB',
+                                        adduct_weights = adduct_weights,
+                                        filter.by = c("M+H"),
+                                        mass_defect_mode = 'pos',
+                                        num_nodes = 4
+)
+```
+
+## Rdisop
+
+```{r eval=FALSE}
+library(Rdisop)
+# prepare formulas list
+masses <- sapply(formulas, function(x) getMass(getMolecule(x))   )
+# prepare peak list to get formula
+masses <- c(147.053, 148.056)
+intensities <- c(93, 5.8)
+molecules <- decomposeIsotopes(masses, intensities)
+cbind(getFormula(molecules), getScore(molecules), getValid(molecules))
+```
+
+## InterpretMSSpectrum
+
+```{r}
+library(InterpretMSSpectrum)
+data(mzrt)
+mz <- mzrt$mz
+int <- apply(mzrt$data, 1, sum)
+
+spectrum <- cbind.data.frame(mz=mz,int=int)
+x <- findMAIN(spectrum,ionmode = 'positive')
+plot(x)
+```
+
+## Metfrag
+
+```{r}
+library(metfRag)
+# first define the settings object
+#
+settingsObject<-list()
+#
+# set database parameters to select candidates
+#
+settingsObject[["DatabaseSearchRelativeMassDeviation"]]<-5.0
+settingsObject[["FragmentPeakMatchAbsoluteMassDeviation"]]<-0.001
+settingsObject[["FragmentPeakMatchRelativeMassDeviation"]]<-5.0
+settingsObject[["MetFragDatabaseType"]]<-"PubChem"
+#
+# the more information about the precurosr is available
+# the more precise is the candidate selection
+#
+settingsObject[["NeutralPrecursorMass"]]<-253.966126
+settingsObject[["NeutralPrecursorMolecularFormula"]]<-"C7H5Cl2FN2O3"
+settingsObject[["PrecursorCompoundIDs"]]<-c("50465", "57010914", "56974741", "88419651", "23354334")
+#
+# pre and post-processing filter
+#
+# define filters to filter unconnected compounds (e.g. salts)
+settingsObject[["MetFragPreProcessingCandidateFilter"]]<-c("UnconnectedCompoundFilter","IsotopeFilter")
+settingsObject[["MetFragPostProcessingCandidateFilter"]]<-c("InChIKeyFilter")
+#
+# define the peaklist as 2-dimensional matrix
+#
+settingsObject[["PeakList"]]<-matrix(c(
+90.97445, 681,
+106.94476, 274,
+110.02750, 110,
+115.98965, 95,
+117.98540, 384,
+124.93547, 613,
+124.99015, 146,
+125.99793, 207,
+133.95592, 777,
+143.98846, 478,
+144.99625, 352,
+146.00410, 999,
+151.94641, 962,
+160.96668, 387,
+163.00682, 782,
+172.99055, 17,
+178.95724, 678,
+178.97725, 391,
+180.97293, 999,
+196.96778, 720,
+208.96780, 999,
+236.96245, 999,
+254.97312, 999), ncol=2, byrow=TRUE)
+#
+# run MetFrag
+#
+scored.candidates<-run.metfrag(settingsObject)
+```
+
+## rmassbank
+
+```{r}
+# https://bioconductor.org/packages/release/bioc/html/RMassBank.html
+RmbDefaultSettings()
+rmbo <- getOption("RMassBank")
+rmbo$spectraList <- list(
+    list(mode="CID", ces="10eV", ce="10eV", res=12000),
+    list(mode="CID", ces="20eV", ce="20eV", res=12000)
+)
+
+rmbo$multiplicityFilter <- 1
+rmbo$annotations$instrument <- "Bruker micrOTOFq"
+rmbo$annotations$instrument_type <- "LC-ESI-QTOF"
+rmbo$recalibrator$MS1 <- "recalibrate.identity"
+rmbo$recalibrator$MS2 <- "recalibrate.identity"
+options("RMassBank" = rmbo)
+
+msmsList <- newMsmsWorkspace()
+
+msmsList@files <- list.files(system.file("spectra.Glucolesquerellin",
+                                         package = "RMassBankData"),
+                             "Glucolesquerellin.*mzData", full.names=TRUE)
+
+loadList(system.file("list/PlantDataset.csv",package="RMassBankData"))
+
+Args <- list(method="centWave",
+             peakwidth=c(5,12),
+             prefilter=c(0,0),
+             ppm=25, snthr=2)
+
+msmsList <- msmsRead(msmsList, files= msmsList@files, 
+                     readMethod = "xcms", mode = "mH", Args = Args, plots = TRUE)
+msmsList <- msmsWorkflow(msmsList, steps=2:8,
+                         mode="mH", readMethod="xcms")
+
+
+mb <- newMbWorkspace(msmsList)
+mb <- resetInfolists(mb)
+mb <- loadInfolist(mb,system.file("infolists/PlantDataset.csv",
+                                  package = "RMassBankData"))
+## Step
+mb <- mbWorkflow(mb, steps=1:8)
+
+```
+
+## Local MS2 annotation
+
+```{r}
+data("qtof")
+# this is the sepctra of HMDB0034004
+file <- system.file("extdata", "challenge-msms.mgf", package = "rmwf")
+# dot product similarity
+anno1 <- enviGCMS::dotpanno(file,db = qtof)
+unique(anno1$name)
+# X rank algorithm
+anno2 <- enviGCMS::xrankanno(file,db = qtof)
+unique(anno2$name)
+# pmd msms annotation
+anno3 <- pmd::pmdanno(file,db=qtof)
+unique(anno2$name)
+enviGCMS::plotanno(anno3)
+```
+
+

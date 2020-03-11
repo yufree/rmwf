@@ -1,0 +1,4 @@
+name: Metabolomics Workflow - Statistical Analysis
+description: >
+   This is the metabolomcis data analysis workflow for statistical analysis.
+create_dir: false

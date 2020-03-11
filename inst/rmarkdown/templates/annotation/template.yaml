@@ -1,0 +1,4 @@
+name: Metabolomics Workflow - Annotation
+description: >
+   This is the metabolomcis data analysis workflow for annotation.
+create_dir: false

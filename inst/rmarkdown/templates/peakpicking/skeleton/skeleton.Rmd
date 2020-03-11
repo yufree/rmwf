@@ -1,0 +1,424 @@
+---
+title: "Peak picking"
+author: "Miao Yu"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    df_print: paged
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,eval=FALSE,cache = TRUE,message=TRUE,warning=FALSE)
+library(rmwf)
+sessionInfo()
+```
+
+## Demo data
+
+We prepared 5 NIST 1950 samples and 6 matrix blank samples as demodata.
+
+```{r}
+# Download demo data from figshare
+library(rfigshare)
+dir.create(file.path('data'), showWarnings = FALSE)
+setwd(file.path('data'))
+# NIST1950 postive data
+dir.create(file.path('NIST1950'), showWarnings = FALSE)
+setwd(file.path('NIST1950'))
+article_id <- 11952558
+details <- fs_details(article_id)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+setwd('..')
+# matrix positive data
+dir.create(file.path('Matrix'), showWarnings = FALSE)
+setwd(file.path('Matrix'))
+article_id <- 11952561
+details <- fs_details(article_id)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+setwd('..')
+path <- getwd()
+files <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
+basename <- basename(path)
+group <- xcms:::phenoDataFromPaths(files)$class
+meta <- cbind.data.frame(name=basename,factor=group)
+```
+
+
+## XCMS
+
+XCMS is popular in metabolomics data analysis. Before we use XCMS to extract the peaks, we need to optimize the parameters to get peaks.
+
+### IPO
+
+Tutorial is [here](https://bioconductor.org/packages/devel/bioc/vignettes/IPO/inst/doc/IPO.html).
+
+```{r}
+# BiocManager::install("IPO")
+library(IPO)
+library(xcms)
+peakpickingParameters <- getDefaultXcmsSetStartingParams('centWave')
+# Uncomment this line to use your own data(suggested 3-5 pooled QC samples)
+# path <- 'path/to/your/files'
+# change to 5 for obitrap
+peakpickingParameters$ppm <- 10
+resultPeakpicking <- 
+  optimizeXcmsSet(files = files[c(7,9,11)], 
+                  params = peakpickingParameters,
+                  plot = F,
+                  subdir = NULL)
+
+optimizedXcmsSetObject <- resultPeakpicking$best_settings$xset
+retcorGroupParameters <- getDefaultRetGroupStartingParams()
+resultRetcorGroup <-
+  optimizeRetGroup(xset = optimizedXcmsSetObject, 
+                   params = retcorGroupParameters, 
+                   plot = F,
+                   subdir = NULL)
+para <- c(resultPeakpicking$best_settings$parameters, 
+          resultRetcorGroup$best_settings)
+save(para,file = 'para.RData')
+```
+
+Use parameters from IPO for xcms and design a function for peak picking.
+
+```{r}
+load('para.RData')
+library(xcms)
+library(stringr)
+getrtmz <- function(path,index = NULL){
+  files <- list.files(path,pattern = ".CDF|.mzXML|.mzML",full.names = T,recursive = T)
+  if(!is.null(index)){
+    files <- files[index]
+  }
+  xset <- xcmsSet(files,
+                  method = "centWave",
+                  peakwidth       = c(para$min_peakwidth,para$max_peakwidth),
+                  ppm             = para$ppm,
+                  noise           = para$noise,
+                  snthresh        = para$snthresh,
+                  mzdiff          = para$mzdiff,
+                  prefilter       = c(para$prefilter,para$value_of_prefilter),
+                  mzCenterFun     = para$mzCenterFun,
+                  integrate       = para$integrate,
+                  fitgauss        = para$fitgauss,
+                  verbose.columns = para$verbose.columns)
+  xset <- retcor( 
+    xset,
+    method         = para$retcorMethod,
+    plottype       = para$plottype,
+    distFunc       = para$distFunc,
+    profStep       = para$profStep,
+    center         = para$center,
+    response       = para$response,
+    gapInit        = para$gapInit,
+    gapExtend      = para$gapExtend,
+    factorDiag     = para$factorDiag,
+    factorGap      = para$factorGap,
+    localAlignment = para$localAlignment)
+  xset <- group( 
+    xset,
+    method  = "density",
+    bw      = para$bw,
+    mzwid   = para$mzwid,
+    minfrac = para$minfrac,
+    minsamp = para$minsamp,
+    max     = para$max)
+  
+  xset <- fillPeaks(xset)
+  return(xset)
+}
+```
+
+### Autotuner
+
+Tutorial is [here](https://bioconductor.org/packages/release/bioc/vignettes/Autotuner/inst/doc/Autotuner.html). Here 5 NIST 1950 samples are used while ~5 pooled QC samples are suggested. The samples should contain peaks across all samples.
+
+```{r}
+# BiocManager::install("Autotuner")
+library(Autotuner)
+# Creating AutoTuner Object
+Autotuner <- createAutotuner(files[c(7:11)],
+                             meta[c(7:11),],
+                             file_col = 'name',
+                             factorCol = 'factor')
+# Total Ion Current Peak Identification
+## Lag - The number of chromatographic scan points used to test if next point is significance (ie the size number of points making up the moving average).
+## Threshold - A numerical constant representing how many times greater the intensity of an adjacent scan has to be from the scans in the sliding window to be considered significant.
+## Influence - A numerical factor used to scale the magnitude of a significant scan once it has been added to the sliding window.
+lag <- 25
+threshold <- 3.1
+influence <- 0.1
+
+signals <- lapply(getAutoIntensity(Autotuner), 
+                  ThresholdingAlgo, lag, threshold, influence)
+# plot_signals(Autotuner, 
+#              threshold, 
+#              ## index for which data files should be displayed
+#              sample_index = 1:5, 
+#              signals = signals)
+Autotuner <- isolatePeaks(Autotuner = Autotuner, 
+                          returned_peaks = 10, 
+                          signals = signals)
+
+# Checking Peak Estimates
+eicParamEsts <- EICparams(Autotuner = Autotuner, 
+                          massThresh = .005, 
+                          verbose = FALSE,
+                          returnPpmPlots = FALSE,
+                          useGap = TRUE)
+# return parameters
+ar <- returnParams(eicParamEsts, Autotuner)
+```
+
+```{r}
+library(xcms)
+library(stringr)
+getrtmz2 <- function(path,index = NULL){
+  files <- list.files(path,pattern = ".CDF|.mzXML|.mzML",full.names = T,recursive = T)
+  if(!is.null(index)){
+    files <- files[index]
+  }
+  xset <- xcmsSet(files,
+                  method = "centWave",
+                  peakwidth       = ar$eicParams$estimates[c(7,6)],
+                  ppm             = ar$eicParams$estimates[1],
+                  noise           = ar$eicParams$estimates[2],
+                  snthresh        = ar$eicParams$estimates[5],
+                  prefilter       = ar$eicParams$estimates[c(4,3)]
+                  )
+  xset <- retcor(xset, method = "obiwarp",)
+  xset <- group(xset,
+    method  = "density",
+    minfrac = 0.5)
+  xset <- fillPeaks(xset)
+  return(xset)
+}
+```
+
+## apLCMS
+
+```{r}
+library(apLCMS)
+aligned<-cdf.to.ftr(path, file.pattern=".mzML", n.nodes=4, min.exp=5,min.run=12,min.pres=1)
+ft <- aligned$final.ftrs
+```
+
+
+## Peaks list
+
+This chunk is used to generate peaks list and related csv, xcmsset object, xcmsEIC object for further analysis.
+
+```{r}
+# use your own data
+# path <- 'path/to/your/file'
+srm <- getrtmz(path)
+srm2 <- getrtmz2(path)
+
+# back up the xcmsset object, xcmsEIC object and peak list
+mzrt <- enviGCMS::getmzrt(srm, name = 'srm', eic = T, type = 'mapo')
+mzrt2 <- enviGCMS::getmzrt(srm2, name = 'srm', eic = T, type = 'mapo')
+mzrt3 <- list(mz=ft[,1],rt=ft[,2],data=as.data.frame(ft[,-c(1:4)]),group=rep('NIST1950',5))
+```
+
+If you want to skip parameter optimization for xcms, you could use function from `enviGCMS` package. You could check this [paper](https://www.nature.com/articles/nprot.2011.454) for those parameters.
+
+```{r eval=FALSE}
+# pmethod could be 'hplcorbitrap', 'uplcorbitrap', 'hplcqtof', 'hplchqtof', 'uplcqtof', 'uplchqtof'
+mzrt3 <- enviGCMS:::getdata(path,pmethod = 'hplcorbitrap')
+```
+
+## Data visulization
+
+```{r}
+library(xcms)
+# you could load you eic and xset object, here is the demo data
+data("srmeic")
+data("srmxset")
+# EIC for m/z 239.0911(four digits) and retention time 229.4s(one digits)
+plot(srmeic,srmxset,groupidx = 'M239.0911T229.4')
+# PCA
+enviGCMS::plotpca(data = mzrt$data,lv = mzrt$group)
+# mzrt plot
+enviGCMS::plotmr(mzrt)
+# RSD plot
+enviGCMS::plotrsd(mzrt)
+# mean rsd analysis
+library(tidyverse)
+a <- cbind.data.frame(NISTmean = gm[,1],NISTrsd = gr[,1])
+p <- ggplot(a,aes(x=log10(NISTmean),y=NISTrsd)) +
+        ggtitle("Mean vs. RSD%") +
+        xlab("log10(Mean)") +
+        ylab("rsd%") 
+# Visualization 1
+p1 <-  p + 
+  geom_point(alpha = 0.5, colour="orange")+
+        geom_density2d()
+p1
+# Visualization 2
+p2 <- p +
+  stat_bin_hex(colour="white", na.rm=TRUE) +
+  scale_fill_gradientn(colours=c("red","orange"), name = "Frequency", na.value=NA)
+p2
+# Visualization 3
+smoothScatter(x=log10(a$NISTmean),y=a$NISTrsd)
+# density plot
+enviGCMS::plotden(mzrt$data,lv=mzrt$group,ylim = c(0,1))
+# heatmap
+enviGCMS::plothm(mzrt$data,lv=factor(mzrt$group),index = c(1:20))
+# TSNE
+# rtsne_out <- Rtsne::Rtsne(t(mzrtfilter$data))
+# plot(rtsne_out)
+# visulize the batch effect/run order effects
+enviGCMS::plotrla(mzrt$data,lv = as.factor(mzrt$group))
+enviGCMS::plotridges(mzrt$data,lv = factor(mzrt$group))
+```
+
+### Visulization for xcms 3 
+
+```{r}
+# data visualization for xcms 3 object
+files <- list.files(path,pattern = ".CDF|.mzXML|.mzML",full.names = T,recursive = T)
+  if(!is.null(index)){
+    files<- files[index]
+    }
+group <- xcms:::phenoDataFromPaths(files)
+  if(NCOL(group)==1){
+      sample_group <- group$class
+  }else{
+      cols <- colnames(group)
+      sample_group <-  do.call(paste,c(group[cols],sep='_'))
+  }
+sample_name=sub(basename(files),pattern = ".CDF|.mzXML|.mzML",replacement = '')
+pd <- data.frame(sample_name, sample_group,stringsAsFactors = F)
+raw_data <- MSnbase::readMSData(files = files, pdata = new("NAnnotatedDataFrame", pd),
+                       mode = "onDisk")
+## Get the base peak chromatograms. This reads data from the files.
+bpis <- xcms::chromatogram(raw_data, aggregationFun = "max")
+## Define colors for the two groups
+group_colors <- paste0(RColorBrewer::brewer.pal(3, "Set1")[1:2], "60")
+names(group_colors) <- c("Nist 1950", "Matrix")
+## Plot all chromatograms.
+plot(bpis, col = group_colors[raw_data$sample_group])
+## quick vis
+tc <- split(tic(raw_data), f = fromFile(raw_data))
+boxplot(tc, col = group_colors[raw_data$sample_group],
+        ylab = "intensity", main = "Total ion current")
+bic <- split(bpi(raw_data), f = fromFile(raw_data))
+boxplot(bic, col = group_colors[raw_data$sample_group],
+        ylab = "intensity", main = "Base peak ion current")
+## EIC
+## Define the rt and m/z range of the peak area
+rtr <- c(200, 900)
+mzr <- c(334.9, 335.1)
+## extract the chromatogram
+chr_raw <- chromatogram(raw_data, mz = mzr, rt = rtr)
+plot(chr_raw, col = group_colors[chr_raw$sample_group])
+
+# remove co-elution and column wash phase
+filter_data <- filterRt(raw_data,rt = c(100,800))
+cwp <- CentWaveParam(peakwidth = c(para$min_peakwidth,para$max_peakwidth), 
+                       ppm             = para$ppm,
+                       noise           = para$noise,
+                       snthresh        = para$snthresh,
+                       mzdiff          = para$mzdiff,
+                       prefilter       = c(para$prefilter,para$value_of_prefilter),
+                       mzCenterFun     = para$mzCenterFun,
+                       integrate       = para$integrate,
+                       fitgauss        = para$fitgauss,
+                       verboseColumns  = para$verbose.columns)
+owp <- ObiwarpParam(binSize        = para$profStep,
+                      centerSample = para$center,
+                      response       = para$response,
+                      distFun        = para$distFunc,
+                      gapInit        = para$gapInit,
+                      gapExtend      = para$gapExtend,
+                      factorDiag     = para$factorDiag,
+                      factorGap      = para$factorGap,
+                      localAlignment = ifelse(para$localAlignment==0,F,T))
+pdp <- PeakDensityParam(sampleGroups = pd$sample_group,
+                        bw      = para$bw,
+                        minFraction = para$minfrac,
+                        minSamples = para$minsamp,
+                        maxFeatures = para$max,
+                        binSize = para$mzwid)
+
+xdata <- findChromPeaks(filter_data, param = cwp)
+xdata <- adjustRtime(xdata, param = owp)
+xdata <- groupChromPeaks(xdata, param = pdp)
+xdata <- fillChromPeaks(xdata)
+
+## check figure
+plotChromPeaks(xdata, file = 3)
+plotChromPeaks(xdata, file = 10)
+plotChromPeakImage(xdata)
+## check eic figure
+plot(chr_raw, col = group_colors[chr_raw$sample_group], lwd = 2)
+highlightChromPeaks(xdata, col = group_colors[chr_raw$sample_group],
+                    lty = 3, rt = rtr, mz = mzr, border = NA,
+                    type = "polygon")
+## check peak shift
+ints <- split(log2(chromPeaks(xdata)[, "into"]),
+              f = chromPeaks(xdata)[, "sample"])
+boxplot(ints, varwidth = TRUE, col = group_colors[xdata$sample_group],
+        ylab = expression(log[2]~intensity), main = "Peak intensities")
+grid(nx = NA, ny = NULL)
+## Get the base peak chromatograms.
+bpis_adj <- chromatogram(xdata, aggregationFun = "max")
+par(mfrow = c(2, 1), mar = c(4.5, 4.2, 1, 0.5))
+plot(bpis_adj, col = group_colors[bpis_adj$sample_group])
+## Plot also the difference of adjusted to raw retention time.
+plotAdjustedRtime(xdata, col = group_colors[xdata$sample_group])
+```
+
+## Peaks filtering
+
+Peaks list could be processed by experimental design in thie chunk.
+
+```{r pf}
+# get the mean and rsd for each group
+mzrtm <- enviGCMS::getdoe(mzrt)
+gm <- mzrtm$groupmean
+gr <- mzrtm$grouprsd
+# find the blank group and pool QC group, demo data only have matrix blank
+srm <- grepl('NIST',colnames(gm))
+blk <- grepl('Matrix',colnames(gm))
+# pqc <- grepl('pool',colnames(gm))
+# filter by pool QC and blank's group mean intensity(pool QC should larger than three times of blank), return numbers and index
+# in demo data, use sample average intensity for each peak
+sum(indexmean <- apply(gm,1,function(x) all(x[srm]>= 3*x[blk])))
+# filter by pool qc rsd%, return numbers and index
+# in demo data, use sample average intensity for each peak
+# select rsd% cutoff around 30
+rsdcf <- 30
+sum(indexrsd <- apply(gr,1,function(x) ifelse(is.na(x[srm]),T,x[srm]<rsdcf)))
+# overlap with rsd% and mean filter
+sum(index <- indexmean&indexrsd)
+
+# new list, update group and remove pool qc/blk and save the new csv file
+qcindex <- grepl('blank',mzrt$group) | grepl('pool',mzrt$group)
+mzrtfilter <- enviGCMS::getfilter(mzrt,rowindex = index,colindex = !qcindex, name = 'lif', type = 'm')
+```
+
+## Wrapgroup
+
+```{r}
+BiocParallel::SnowParam()
+ptm <- proc.time()
+xset <- getrtmz2(path)
+proc.time() - ptm
+library(doParallel)
+cl = makeCluster(detectCores() - 1)
+registerDoParallel(cl)
+library(warpgroup)
+library(xcms)
+xr.l = bplapply(xset@filepaths, xcmsRaw, profstep=0)
+xs.warpgroup = group.warpgroup(xset, xr.l = xr.l, rt.max.drift = 20, ppm.max.drift = 3, rt.aligned.lim = 5,smooth.n = 5)
+saveRDS(xs.warpgroup,file = 'peak.RDS')
+saveRDS(xset,file = 'peakraw.RDS')
+```

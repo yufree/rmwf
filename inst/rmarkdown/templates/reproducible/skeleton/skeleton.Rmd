@@ -1,0 +1,189 @@
+---
+title: "Reproducible research"
+author: "Miao Yu"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    df_print: paged
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,eval = F)
+```
+
+# Database within rmwf package
+
+```{r}
+path <- system.file("demodata/pmd", package = "rmwf")
+files <- list.files(path,recursive = T,full.names = T)
+
+# pmd related dataset
+# demo data from TBBPA https://pubs.acs.org/doi/abs/10.1021/acs.est.9b02122
+tbbpa <- enviGCMS::getmzrtcsv(files[2])
+# demo data from in vivo SPME https://www.sciencedirect.com/science/article/pii/S0003267018313047
+spme <- enviGCMS::getmzrtcsv(files[1])
+
+path <- system.file("demodata/untarget", package = "rmwf")
+files <- list.files(path,recursive = T,full.names = T)
+
+# demo data from MTBLS28 https://www.ebi.ac.uk/metabolights/MTBLS28
+MTBLS28pos <- enviGCMS::getmzrtcsv(files[13])
+MTBLS28neg <- enviGCMS::getmzrtcsv(files[12])
+
+# demo data from MTBLS341 https://www.ebi.ac.uk/metabolights/MTBLS341
+MTBLS341exudatepos <- enviGCMS::getmzrtcsv(files[15])
+MTBLS341exudateneg <- enviGCMS::getmzrtcsv(files[14])
+MTBLS341leafpos <- enviGCMS::getmzrtcsv(files[16])
+MTBLS341leafneg <- enviGCMS::getmzrtcsv(files[17])
+MTBLS341rootpos <- enviGCMS::getmzrtcsv(files[19])
+MTBLS341rootneg <- enviGCMS::getmzrtcsv(files[18])
+
+# demo data from MTBLS59 https://www.ebi.ac.uk/metabolights/MTBLS59
+MTBLS59pos <- enviGCMS::getmzrtcsv(files[21])
+MTBLS59neg <- enviGCMS::getmzrtcsv(files[20])
+
+# demo data from ST000220 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000220
+DST000220 <- enviGCMS::getmzrtcsv(files[1])
+DST000220neg <- enviGCMS::getmzrtcsv(files[2])
+
+# demo data from ST000388 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000388
+DST000388 <- enviGCMS::getmzrtcsv(files[3])
+
+# demo data from ST000918 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000918
+DST000918pos <- enviGCMS::getmzrtcsv(files[5])
+DST000918neg <- enviGCMS::getmzrtcsv(files[4])
+
+# demo data from ST001120 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST001120
+DST001120pos <- enviGCMS::getmzrtcsv(files[7])
+DST001120neg <- enviGCMS::getmzrtcsv(files[6])
+
+# demo data from ST001168 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST001168
+DST001168pos <- enviGCMS::getmzrtcsv(files[9])
+DST001168neg <- enviGCMS::getmzrtcsv(files[8])
+
+# demo data from ST001169 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST001169
+DST001169pos <- enviGCMS::getmzrtcsv(files[11])
+DST001169neg <- enviGCMS::getmzrtcsv(files[10])
+
+# demo data from ST000560 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000560
+ST000560pos <- enviGCMS::getmzrtcsv(files[22])
+ST000560neg <- enviGCMS::getmzrtcsv(files[23])
+
+path <- system.file("demodata/target", package = "rmwf")
+files <- list.files(path,recursive = T,full.names = T)
+
+# Targeted data
+# demo data from MTBLS90 https://www.ebi.ac.uk/metabolights/MTBLS90
+MTBLS90 <- enviGCMS::getmzrtcsv(files[2])
+MTBLS90meta <- read.csv(files[1])
+
+# demo data from MTBLS92 https://www.ebi.ac.uk/metabolights/MTBLS92
+MTBLS92 <- enviGCMS::getmzrtcsv(files[4])
+MTBLS92meta <- read.csv(files[3])
+
+# demo data from ST001000 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST001000
+ST001000_AN001878 <- enviGCMS::getmzrtcsv(files[6])
+ST001000_AN001879 <- enviGCMS::getmzrtcsv(files[8])
+ST001000_AN001880 <- enviGCMS::getmzrtcsv(files[10])
+ST001000_AN001881 <- enviGCMS::getmzrtcsv(files[12])
+
+ST001000_AN001878meta <- read.csv(files[5])
+ST001000_AN001879meta <- read.csv(files[7])
+ST001000_AN001880meta <- read.csv(files[9])
+ST001000_AN001881meta <- read.csv(files[11])
+```
+
+# Connetion with other online database
+
+## ISA for metabolights
+
+```{r isa, eval=F}
+# Risa package, pls download metadata from metabolights and put those file in current work dir
+library(Risa)
+test <- readISAtab()
+metadata <- test@study.files$MTBLS822
+# change the file name to load in the metabolites data
+data0 <- read.table(file = 'm_e07_qm_fia_maf.tsv', sep = '\t', skip = 1)
+head <- read.table(file = 'm_e07_qm_fia_maf.tsv',sep = '\t',nrows = 1)
+data <- data0[,match(metadata$`Sample Name`,head,nomatch = F)]
+colnames(data) <- head[,match(metadata$`Sample Name`,head,nomatch = F)]
+group <- metadata[match(colnames(data),metadata$`Sample Name`,nomatch = F),]
+mz <- data0[,head=='mass_to_charge']
+rt <- data0[,head=='retention_time']
+# construnt the list
+list <- list(data=data,group=group,mz=mz,rt=rt)
+```
+
+## Metabolomics WorkBench
+
+```{r mwb, eval=F}
+# target list from certain study
+list <- rmwf::getmwlist('ST000001')
+
+# Untargeted data
+# download demo files here: https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=ProcessDownloadResults&StudyID=ST000553&AnalysisID=AN000845
+
+group <- rmwf::getmwfactor('ST000553')
+
+data <- read.table('ST000553_AN000846.txt',sep = '\t',header = T, nrows = 1983,na.strings = '\\N',row.names = 1)
+
+anno <- read.table('ST000553_AN000846.txt',sep = '\t',header = T, skip = 1985,na.strings = '\\N',row.names = 1)
+mz <- anno$quantified.m.z
+rt <- anno$retention.index*60
+
+list <- list(data=data,mz=mz,rt=rt,group=group)
+```
+
+## rfigshare
+
+```{r}
+# Download demo data from figshare
+library(rfigshare)
+dir.create(file.path('data'), showWarnings = FALSE)
+setwd(file.path('data'))
+# NIST1950 postive data
+dir.create(file.path('NIST1950'), showWarnings = FALSE)
+setwd(file.path('NIST1950'))
+article_id <- 11952558
+details <- fs_details(article_id)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+setwd('..')
+# matrix positive data
+dir.create(file.path('Matrix'), showWarnings = FALSE)
+setwd(file.path('Matrix'))
+article_id <- 11952561
+details <- fs_details(article_id)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+setwd('..')
+path <- getwd()
+files <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
+# DDA positive data
+setwd('..')
+dir.create(file.path('DDA'), showWarnings = FALSE)
+setwd(file.path('DDA'))
+article_id <- 11952555
+details <- fs_details(article_id)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+path <- getwd()
+ddafile <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
+# PMDDA positive data
+setwd('..')
+dir.create(file.path('PMDDA'), showWarnings = FALSE)
+setwd(file.path('PMDDA'))
+article_id <- 11952549
+details <- fs_details(article_id)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+path <- getwd()
+pmddafile <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
+```
+

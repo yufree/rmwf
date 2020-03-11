@@ -1,0 +1,133 @@
+---
+title: "Statistical Analysis"
+author: "Miao Yu"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    df_print: paged
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,eval = F)
+```
+
+## Demo data
+
+We prepared 5 NIST 1950 samples and 6 matrix blank samples as demodata.
+
+```{r}
+library(rmwf)
+data("mzrt")
+```
+
+## Bottom-up analysis
+
+Bottom-up analysis mean the model for each metabolite. In this case, we could find out which metabolite will be affected by our experiment design. However, take care of multiple comparision issue.
+
+$$
+metabolite = f(control/treatment, co-variables)
+$$
+
+## Top-down analysis
+
+Top-down analysis mean the model for output. In this case, we could evaluate the contribution of each metabolites. You need variable selection to make a better model.
+
+$$
+control/treatment = f(metabolite 1,metabolite 2,...,metaboliteN,co-varuables)
+$$
+
+
+### Linear regression
+
+```{r}
+library(limma)
+design <- model.matrix(~factor(mzrt$group))
+fit <- lmFit(log2(mzrt$data+1), design)
+fit2  <- eBayes(fit)
+limma::volcanoplot(fit2,coef = 2)
+idx <- topTable(fit2,coef=2,adjust.method = "bonferroni",sort.by = 'none',number = nrow(fit2))
+fs <- enviGCMS::getfilter(mzrt,idx$adj.P.Val<0.05)
+sum(idx$P.Value<0.05)
+sum(idx$adj.P.Val<0.05)
+```
+
+### machine learning
+
+- test multiple models
+
+```{r sa}
+library(caret)
+## Spliting data
+trainIndex <- createDataPartition(fs$group, p = .5, 
+                                  list = FALSE, 
+                                  times = 1)
+## Get the training and testing datasets
+train <- fs$data[, trainIndex]
+train <- cbind.data.frame(Y=fs$group[trainIndex],t(train))
+test  <- fs$data[,-trainIndex]
+test  <- cbind.data.frame(Y=fs$group[-trainIndex],t(test))
+## Train the model
+library(doParallel)
+registerDoParallel(4)
+getDoParWorkers()
+set.seed(123)
+my_control <- trainControl(method = "cv", # for “cross-validation”
+                           number = 5, # number of k-folds
+                           savePredictions = "final",
+                           classProbs=TRUE,
+                           allowParallel = TRUE)
+# test multiple model
+library(caretEnsemble)
+modellist <- caretList(Y~.,
+                        data=train,
+                        trControl = my_control,
+                        methodList = c("lda",'rf'),
+                        tuneList = NULL,
+                        continue_on_fail = FALSE)
+modellist
+results <- resamples(modellist)
+summary(results)
+
+model_preds <- lapply(modellist, predict, newdata=test, type="prob")
+model_preds <- lapply(model_preds, function(x) x[,"NIST1950"])
+model_preds <- data.frame(model_preds)
+caTools::colAUC(model_preds, test$Y)
+```
+
+- combine models
+
+```{r ensemble,eval=F}
+# ensemble model
+greedy_ensemble <- caretEnsemble(
+  modellist, 
+  metric="kappa",
+  trControl=trainControl(
+    number=2,
+    summaryFunction=twoClassSummary,
+    classProbs=TRUE
+    ))
+summary(greedy_ensemble)
+model_preds$ensemble <- predict(greedy_ensemble, newdata=test, type="prob")
+varImp(greedy_ensemble)
+caTools::colAUC(model_preds, test$Y)
+
+# glm stack model
+glm_ensemble <- caretStack(
+  modellist,
+  method="glm",
+  metric="ROC",
+  trControl=trainControl(
+    method="boot",
+    number=10,
+    savePredictions="final",
+    classProbs=TRUE,
+    summaryFunction=twoClassSummary
+  )
+)
+model_preds2 <- model_preds
+model_preds2$ensemble <- predict(glm_ensemble, newdata=test, type="prob")
+CF <- coef(glm_ensemble$ens_model$finalModel)[-1]
+caTools::colAUC(model_preds2, test$Y)
+```
