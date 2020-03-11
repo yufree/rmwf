@@ -1,0 +1,4 @@
+name: Metabolomics Workflow - Normalization
+description: >
+   This is the metabolomcis data analysis workflow for normalization.
+create_dir: false

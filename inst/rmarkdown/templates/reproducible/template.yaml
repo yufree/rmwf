@@ -1,0 +1,4 @@
+name: Metabolomics Workflow - Reproducible
+description: >
+   This is the metabolomcis data analysis workflow for reproducible research.
+create_dir: false

@@ -1,0 +1,4 @@
+name: PMDDA Metabolomics Workflow
+description: >
+   This is the PMDDA metabolomcis data analysis workflow.
+create_dir: false

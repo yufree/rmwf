@@ -1,0 +1,4 @@
+name: Metabolomics Workflow - Peakpicking
+description: >
+   This is the metabolomcis data analysis workflow for peak picking, including parameters selection, peaks filtering and data visulization.
+create_dir: false
