@@ -4,7 +4,9 @@
 \name{srmxset}
 \alias{srmxset}
 \title{Demo xcmsset object}
-\format{xcmsset object}
+\format{
+xcmsset object
+}
 \usage{
 data(srmxset)
 }

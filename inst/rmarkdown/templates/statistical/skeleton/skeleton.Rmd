@@ -43,7 +43,7 @@ $$
 
 ```{r}
 library(limma)
-design <- model.matrix(~factor(mzrt$group))
+design <- model.matrix(~factor(mzrt$group$sample_group))
 fit <- lmFit(log2(mzrt$data+1), design)
 fit2  <- eBayes(fit)
 limma::volcanoplot(fit2,coef = 2)
@@ -60,14 +60,14 @@ sum(idx$adj.P.Val<0.05)
 ```{r sa}
 library(caret)
 ## Spliting data
-trainIndex <- createDataPartition(fs$group, p = .5, 
+trainIndex <- createDataPartition(fs$group$sample_group, p = .5, 
                                   list = FALSE, 
                                   times = 1)
 ## Get the training and testing datasets
 train <- fs$data[, trainIndex]
-train <- cbind.data.frame(Y=fs$group[trainIndex],t(train))
+train <- cbind.data.frame(Y=fs$group$sample_group[trainIndex],t(train))
 test  <- fs$data[,-trainIndex]
-test  <- cbind.data.frame(Y=fs$group[-trainIndex],t(test))
+test  <- cbind.data.frame(Y=fs$group$sample_group[-trainIndex],t(test))
 ## Train the model
 library(doParallel)
 registerDoParallel(4)

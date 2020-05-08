@@ -211,7 +211,7 @@ sum(indexrsd <- apply(gr,1,function(x) ifelse(is.na(x[srm]),T,x[srm]<rsdcf)))
 sum(index <- indexmean&indexrsd)
 
 # new list, update group and remove pool qc/blk and save the new csv file
-qcindex <- grepl('blank',mzrt$group) | grepl('pool',mzrt$group)
+qcindex <- grepl('blank',mzrt$group$sample_group) | grepl('pool',mzrt$group$sample_group)
 mzrtfilter <- enviGCMS::getfilter(mzrt,rowindex = index,colindex = !qcindex, name = 'lif', type = 'm')
 ```
 

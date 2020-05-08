@@ -4,7 +4,9 @@
 \name{para}
 \alias{para}
 \title{Demo ipo parameters object}
-\format{ipo parameters}
+\format{
+ipo parameters
+}
 \usage{
 data(para)
 }

@@ -4,7 +4,9 @@
 \name{srmeic}
 \alias{srmeic}
 \title{Demo xcmseic object}
-\format{xcmseic object}
+\format{
+xcmseic object
+}
 \usage{
 data(srmeic)
 }

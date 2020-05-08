@@ -4,7 +4,9 @@
 \name{mzrt}
 \alias{mzrt}
 \title{Demo mzrt list object}
-\format{mzrt list object}
+\format{
+mzrt list object
+}
 \usage{
 data(mzrt)
 }

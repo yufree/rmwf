@@ -56,6 +56,12 @@ library(pmd)
 mzrt <- enviGCMS::getmzrt(srmxset)
 # get the peaklist
 mzrt <- pmd::globalstd(mzrt,ng=NULL)
+# link pos and neg
+data("mzrtn")
+pos <- enviGCMS::getfilter(mzrt,colindex = grepl('NIST',colnames(mzrt$data)))
+neg <- enviGCMS::getfilter(mzrtn,colindex = grepl('NIST',colnames(mzrtn$data)))
+all <- pmd::getposneg(pos,neg)
+sum(abs(all$cor)>0.9,na.rm = T)
 ```
 
 ## GNPS FBMN

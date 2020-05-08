@@ -26,8 +26,8 @@ data("mzrt")
 
 ```{r ba}
 # visulize the batch effect
-enviGCMS::plotrla(mzrt$data,lv = as.factor(mzrt$group))
-enviGCMS::plotridges(mzrt$data,lv = factor(mzrt$group))
+enviGCMS::plotrla(mzrt$data,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(mzrt$data,lv = factor(mzrt$group$sample_group))
 # get the simulation data and test on NOREVA
 sim <- mzrtsim::simmzrt(mzrt$data)
 mzrtsim::simdata(sim)

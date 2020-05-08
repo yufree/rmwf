@@ -243,7 +243,7 @@ data("srmxset")
 # EIC for m/z 239.0911(four digits) and retention time 229.4s(one digits)
 plot(srmeic,srmxset,groupidx = 'M239.0911T229.4')
 # PCA
-enviGCMS::plotpca(data = mzrt$data,lv = mzrt$group)
+enviGCMS::plotpca(data = mzrt$data,lv = mzrt$group$sample_group)
 # mzrt plot
 enviGCMS::plotmr(mzrt)
 # RSD plot
@@ -268,15 +268,15 @@ p2
 # Visualization 3
 smoothScatter(x=log10(a$NISTmean),y=a$NISTrsd)
 # density plot
-enviGCMS::plotden(mzrt$data,lv=mzrt$group,ylim = c(0,1))
+enviGCMS::plotden(mzrt$data,lv=mzrt$group$sample_group,ylim = c(0,1))
 # heatmap
-enviGCMS::plothm(mzrt$data,lv=factor(mzrt$group),index = c(1:20))
+enviGCMS::plothm(mzrt$data,lv=factor(mzrt$group$sample_group),index = c(1:20))
 # TSNE
 # rtsne_out <- Rtsne::Rtsne(t(mzrtfilter$data))
 # plot(rtsne_out)
 # visulize the batch effect/run order effects
-enviGCMS::plotrla(mzrt$data,lv = as.factor(mzrt$group))
-enviGCMS::plotridges(mzrt$data,lv = factor(mzrt$group))
+enviGCMS::plotrla(mzrt$data,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(mzrt$data,lv = factor(mzrt$group$sample_group))
 ```
 
 ### Visulization for xcms 3 
@@ -401,7 +401,7 @@ sum(indexrsd <- apply(gr,1,function(x) ifelse(is.na(x[srm]),T,x[srm]<rsdcf)))
 sum(index <- indexmean&indexrsd)
 
 # new list, update group and remove pool qc/blk and save the new csv file
-qcindex <- grepl('blank',mzrt$group) | grepl('pool',mzrt$group)
+qcindex <- grepl('blank',mzrt$group$sample_group) | grepl('pool',mzrt$group$sample_group)
 mzrtfilter <- enviGCMS::getfilter(mzrt,rowindex = index,colindex = !qcindex, name = 'lif', type = 'm')
 ```
 

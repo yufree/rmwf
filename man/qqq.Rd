@@ -4,13 +4,15 @@
 \name{qqq}
 \alias{qqq}
 \title{A list containing HMDB qqq MS/MS data with peaks larger than 10 percentage for PMD annatation}
-\format{A list containing HMDB qqq MS/MS data with peaks larger than 10 percentage for PMD annatation
+\format{
+A list containing HMDB qqq MS/MS data with peaks larger than 10 percentage for PMD annatation
 \describe{
   \item{name}{HMDB ID}
   \item{mz}{mass to charge ratio}
   \item{msms}{msms pmd}
   \item{msmsraw}{raw msms data}
-  }}
+  }
+}
 \usage{
 data(qqq)
 }
