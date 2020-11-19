@@ -53,6 +53,40 @@ sum(idx$P.Value<0.05)
 sum(idx$adj.P.Val<0.05)
 ```
 
+### Variable selection
+
+```{r}
+library(caret)
+## Spliting data
+trainIndex <- createDataPartition(fs$group$sample_group, p = .5, 
+                                  list = FALSE, 
+                                  times = 1)
+## Get the training and testing datasets
+train <- fs$data[, trainIndex]
+train <- cbind.data.frame(Y=fs$group$sample_group[trainIndex],t(train))
+test  <- fs$data[,-trainIndex]
+test  <- cbind.data.frame(Y=fs$group$sample_group[-trainIndex],t(test))
+## variable selection by elastic net
+lambad.grid <- 10^seq(2,-2,length=100)
+alpha.grid <- seq(0,1,length=10)
+trnCtrl=trainControl(method = 'repeatedCV',number = 10,repeats = 5)
+srchGrd = expand.grid(.alpha=alpha.grid,.lambda=lambad.grid)
+mytrain <- train(Y~.,data=train,
+                 method="glmnet",
+                 tuneGrid=srchGrd,
+                 trControl=trnCtrl,
+                 standardize=T,maxit=1000000)
+plot(mytrain)
+mytrain$bestTune
+coef(mytrain)
+pROC::roc(test$Y, as.numeric(predict(mytrain, test[,-1], type = "response")))
+
+## Variable impoartance
+library(gWQS)
+result <- gwqs(Y~wqs,data = train,mix_name = colnames(train)[-1],q = 4,plots = T,pred = 0.3)
+
+```
+
 ### machine learning
 
 - test multiple models

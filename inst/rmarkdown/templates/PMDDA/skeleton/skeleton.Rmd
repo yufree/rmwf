@@ -27,7 +27,7 @@ setwd(file.path('data'))
 # NIST1950 postive data
 dir.create(file.path('NIST1950'), showWarnings = FALSE)
 setwd(file.path('NIST1950'))
-article_id <- 11952558
+article_id <- 13252196
 details <- fs_details(article_id)
 name <- sapply(details$files,function(x) x$name)
 url <- sapply(details$files,function(x) x$download_url)
@@ -36,7 +36,7 @@ setwd('..')
 # matrix positive data
 dir.create(file.path('Matrix'), showWarnings = FALSE)
 setwd(file.path('Matrix'))
-article_id <- 11952561
+article_id <- 13252244
 details <- fs_details(article_id)
 name <- sapply(details$files,function(x) x$name)
 url <- sapply(details$files,function(x) x$download_url)
@@ -48,7 +48,18 @@ files <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
 setwd('..')
 dir.create(file.path('DDA'), showWarnings = FALSE)
 setwd(file.path('DDA'))
-article_id <- 11952555
+article_id <- 13252394
+details <- fs_details(article_id)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+path <- getwd()
+ddafile <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
+# matrix DDA positive data
+setwd('..')
+dir.create(file.path('DDAMatrix'), showWarnings = FALSE)
+setwd(file.path('DDAMatrix'))
+article_id <- 13252631
 details <- fs_details(article_id)
 name <- sapply(details$files,function(x) x$name)
 url <- sapply(details$files,function(x) x$download_url)
@@ -59,13 +70,13 @@ ddafile <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
 setwd('..')
 dir.create(file.path('PMDDA'), showWarnings = FALSE)
 setwd(file.path('PMDDA'))
-article_id <- 11952549
+article_id <- 13253942
 details <- fs_details(article_id)
 name <- sapply(details$files,function(x) x$name)
 url <- sapply(details$files,function(x) x$download_url)
 download.file(url, name)
 path <- getwd()
-pmddafile <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
+pmddafile <- list.files(path,pattern = '*.mzXML',recursive = T,full.names = T)
 ```
 
 The data could be subset by msconvert to avoid peaks with low quality(co-elution and column washing phase). You need to install docker and pull the docker image from msconvert.
@@ -93,13 +104,14 @@ peakpickingParameters <- getDefaultXcmsSetStartingParams('centWave')
 # change to 5 for obitrap
 peakpickingParameters$ppm <- 10
 resultPeakpicking <- 
-  optimizeXcmsSet(files = files[c(7,9,11)], 
+  optimizeXcmsSet(files = files[c(7,9,10)], 
                   params = peakpickingParameters,
                   plot = F,
                   subdir = NULL)
 
 optimizedXcmsSetObject <- resultPeakpicking$best_settings$xset
 retcorGroupParameters <- getDefaultRetGroupStartingParams()
+retcorGroupParameters$minfrac <- 1
 resultRetcorGroup <-
   optimizeRetGroup(xset = optimizedXcmsSetObject, 
                    params = retcorGroupParameters, 
@@ -183,7 +195,7 @@ This chunk is used to generate peaks list and related csv, xcmsset object, xcmsE
 # path <- 'path/to/your/file'
 srm <- getrtmz(path)
 # back up the xcmsset object, xcmsEIC object and peak list
-mzrt <- enviGCMS::getmzrt(srm, name = 'srm', eic = T, type = 'mapo')
+mzrt <- enviGCMS::getmzrt(srm, name = 'srm', eic = T)
 ```
 
 # Peaks filtering
@@ -202,7 +214,7 @@ blk <- grepl('Matrix',colnames(gm))
 # pqc <- grepl('pool',colnames(gm))
 # filter by pool QC and blank's group mean intensity(pool QC should larger than three times of blank), return numbers and index
 # in demo data, use sample average intensity for each peak
-sum(indexmean <- apply(gm,1,function(x) all(x[srm]>= 3*x[blk])))
+sum(indexmean <- apply(gm,1,function(x) all(x[srm]> 3*x[blk])))
 # filter by pool qc rsd%, return numbers and index
 # select rsd% cutoff 30
 rsdcf <- 30
@@ -212,7 +224,7 @@ sum(index <- indexmean&indexrsd)
 
 # new list, update group and remove pool qc/blk and save the new csv file
 qcindex <- grepl('blank',mzrt$group$sample_group) | grepl('pool',mzrt$group$sample_group)
-mzrtfilter <- enviGCMS::getfilter(mzrt,rowindex = index,colindex = !qcindex, name = 'lif', type = 'm')
+mzrtfilter <- enviGCMS::getfilter(mzrt,rowindex = index,colindex = !qcindex, name = 'lif')
 ```
 
 # DDA MS/MS
@@ -224,6 +236,9 @@ cwp <- xcms::CentWaveParam(snthresh = 5, noise = 100, ppm = 10,
                      peakwidth = c(3, 30))
 dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
 dda_spectra <- chromPeakSpectra(dda_data)
+mz <- precursorMz(dda_spectra)
+rt <- rtime(dda_spectra)
+files <- fromFile(dda_spectra)
 # check precursor ions
 ex_mz <- 97.97
 chromPeaks(dda_data, mz = ex_mz, ppm = 20)
@@ -246,11 +261,10 @@ Generate targeted list for MS/MS analysis from pmd analysis
 ```{r eval=F}
 x <- pmd::globalstd(mzrtfilter,ng=NULL)
 
-pmdtarget <- function(list,Dppm = 20,Drt = 0.5,ce = NA, name = 'target',n=NULL){
-        head <-  c('On', 'Prec. m/z', 'Z','Ret. Time (min)', 'Delta Ret. Time (min)', 'Iso. Width', 'Collision Energy')
-        mz <- list$mz[list$stdmassindex]
-        rt <- round(list$rt[list$stdmassindex]/60,3)
-        temp = cbind('TRUE',mz,1,rt,Drt,'Narrow (~1.3 m/z)',ce)
+gettarget <- function(mz,rt,Drt=0.5,Dppm=20,ce=NA,name,n=NULL){
+  head <-  c('On', 'Prec. m/z', 'Z','Ret. Time (min)', 'Delta Ret. Time (min)', 'Iso. Width', 'Collision Energy')
+        rtn <- round(rt/60,3)
+        temp = cbind('TRUE',mz,1,rtn,Drt,'Narrow (~1.3 m/z)',ce)
         data <- rbind(head,temp)
         colnames(data) <- c('TargetedMSMSTable',rep('',6))
 
@@ -259,7 +273,7 @@ pmdtarget <- function(list,Dppm = 20,Drt = 0.5,ce = NA, name = 'target',n=NULL){
                 utils::write.table(data,file = name2,row.names = F,col.names = F,sep=",")
 
         }else{
-                idx <- targetsep(list$rt[list$stdmassindex],Drt,n)
+                idx <- targetsep(rt,Drt,n)
                 for(i in 1:length(table(idx))){
                         namei <- paste0(name,i,'.csv')
                         idx2 <- idx == i
@@ -272,7 +286,8 @@ pmdtarget <- function(list,Dppm = 20,Drt = 0.5,ce = NA, name = 'target',n=NULL){
         return(data)
 }
 
-targetsep <- function(rt,Drt,n=6){
+targetsep <- function(rt,Drt,n=6,seed=42){
+        set.seed(seed)
         D <- Drt*60
         dis <- stats::dist(rt, method = "manhattan")
         fit <- stats::hclust(dis)
@@ -295,8 +310,125 @@ targetsep <- function(rt,Drt,n=6){
         }
         return(inji)
 }
+zzz <- gettarget(x,n=6,Drt = 0.2,ce=20)
+```
 
-zzz <- pmdtarget(x,n=6,Drt = 0.2,ce=20)
+## Compare with other software
+
+```{r}
+# RAMclust
+data(srmxset)
+rcp <- RAMClustR::ramclustR(srmxset)
+RC <- RAMClustR::do.findmain(rcp, mode = "positive", mzabs.error = 0.02, ppm.error = 10)
+meanpeak <- apply(t(rcp$MSdata),1,mean)
+df <-  cbind.data.frame(mz = rcp$fmz, rt = rcp$frt, cluster = rcp$featclus,meanpeak)
+mol <- data.frame(mz = RC$M+1.0073,rt=RC$clrt)
+write.csv(mol,'ramclust.csv')
+rre <- read.csv('ramclust.csv')
+#542
+data(srmnxset)
+rcp <- RAMClustR::ramclustR(srmnxset)
+RC <- RAMClustR::do.findmain(rcp, mode = "negative", mzabs.error = 0.02, ppm.error = 10)
+meanpeak <- apply(t(rcp$MSdata),1,mean)
+dfn <-  cbind.data.frame(mz = rcp$fmz, rt = rcp$frt, cluster = rcp$featclus,meanpeak)
+moln <- data.frame(mz = RC$M-1.0073,rt=RC$clrt)
+write.csv(moln,'ramclustn.csv')
+rren <- read.csv('ramclustn.csv')
+# 770
+
+# CAMERA
+xsa <- CAMERA::annotate(srmxset, perfwhm=0.7, cor_eic_th=0.75,
+ppm=10, polarity="positive")
+peaklist <- CAMERA::getPeaklist(xsa)
+peaklist$meanpeak <- apply(peaklist[,c(15:19)],1,mean)
+length(unique(peaklist$pcgroup))
+peaklist2 <- peaklist[index,]
+length(unique(peaklist2$pcgroup))
+write.csv(peaklist2,'camera.csv')
+grouprt <- aggregate(peaklist$rt,by=list(peaklist$pcgroup), median)
+grouprt$psgrp <- as.numeric(grouprt$Group.1)
+grouprt2 <- merge(data.frame(xsa@annoGrp),grouprt,by='psgrp')
+cre <- cbind.data.frame(mz=grouprt2$mass+1.0073,rt=grouprt2$x)
+write.csv(cre,'cameratar.csv')
+cre <- read.csv('cameratar.csv')
+# 862
+
+xsa <- CAMERA::annotate(srmnxset, perfwhm=0.7, cor_eic_th=0.75,
+ppm=10, polarity="negative")
+peaklistn <- CAMERA::getPeaklist(xsa)
+peaklistn$meanpeak <- apply(peaklistn[,c(15:19)],1,mean)
+length(unique(peaklistn$pcgroup))
+peaklist2n <- peaklistn[indexn,]
+length(unique(peaklist2n$pcgroup))
+write.csv(peaklist2n,'cameran.csv')
+grouprt <- aggregate(peaklistn$rt,by=list(peaklistn$pcgroup), median)
+grouprt$psgrp <- as.numeric(grouprt$Group.1)
+grouprt2 <- merge(data.frame(xsa@annoGrp),grouprt,by='psgrp')
+cren <- cbind.data.frame(mz=grouprt2$mass-1.0073,rt=grouprt2$x)
+write.csv(cren,'camerantar.csv')
+cren <- read.csv('camerantar.csv')
+# 710
+
+# PMD
+pos <- enviGCMS::getmzrtcsv('rppmzrt.csv')
+neg <- enviGCMS::getmzrtcsv('rpnmzrt.csv')
+
+pospmd <- pmd::globalstd(pos,sda=F,ng = NULL)
+pospmd2 <- pmd::getcluster(pospmd,corcutoff = 0.9)
+sum(pospmd2$stdmassindex2)
+# 780
+pre <- cbind.data.frame(mz=pospmd2$mz[pospmd2$stdmassindex2],rt=pospmd2$rt[pospmd2$stdmassindex2])
+write.csv(pre,'pretar.csv')
+pre <- read.csv('pretar.csv')
+
+negpmd <- pmd::globalstd(neg,sda=F,ng = NULL)
+negpmd2 <- pmd::getcluster(negpmd,corcutoff = 0.9)
+sum(negpmd2$stdmassindex2)
+pren <- cbind.data.frame(mz=negpmd2$mz[negpmd2$stdmassindex2],rt=negpmd2$rt[negpmd2$stdmassindex2])
+write.csv(pren,'prentar.csv')
+pren <- read.csv('prentar.csv')
+
+# overlap
+sum(paste(round(rre$mz,2),round(rre$rt,-1)) %in% paste(round(cre$mz,2),round(cre$rt,-1)))
+sum(paste(round(pre$mz,2),round(pre$rt,-1)) %in% paste(round(cre$mz,2),round(cre$rt,-1)))
+sum(paste(round(pre$mz,2),round(pre$rt,-1)) %in% paste(round(rre$mz,2),round(rre$rt,-1)))
+
+rreidx <- paste(round(rre$mz,2),round(rre$rt,-1))
+creidx <- paste(round(cre$mz,2),round(cre$rt,-1))
+preidx <- paste(round(pre$mz,2),round(pre$rt,-1))
+
+rrenidx <- paste(round(rren$mz,2),round(rren$rt,-1))
+crenidx <- paste(round(cren$mz,2),round(cren$rt,-1))
+prenidx <- paste(round(pren$mz,2),round(pren$rt,-1))
+
+venn::venn(list(RamClustR=rreidx,CAMERA=creidx,PMD=preidx))
+venn::venn(list(RamClustR=rrenidx,CAMERA=crenidx,PMD=prenidx))
+
+rt <- gettarget(rre$mz,rre$rt,n=6,Drt = 0.2,ce=20,name = 'ramclustr')
+ct <- gettarget(cre$mz,cre$rt,n=6,Drt = 0.2,ce=20,name = 'CAMERA')
+pt <- gettarget(pre$mz,pre$rt,n=6,Drt = 0.2,ce=20,name = 'pmd')
+rtn <- gettarget(rren$mz,rren$rt,n=6,Drt = 0.2,ce=20,name = 'ramclustrn')
+ctn <- gettarget(cren$mz,cren$rt,n=6,Drt = 0.2,ce=20,name = 'CAMERAn')
+ptn <- gettarget(pren$mz,pren$rt,n=6,Drt = 0.2,ce=20,name = 'pmdn')
+
+# remove wrong mode annotation and duplicated annotation
+posgnps <- read.csv('posnodeanno.csv')
+neggnps <- read.csv('negnodeanno.csv')
+
+library(eulerr)
+num <- as.numeric(table(posgnps$DefaultGroups))
+names(num) <- c('DDA','DDA&Matrix','DDA&Matrix&PMD&CAMERA','DDA&Matrix&PMD&CAMERA&RAMClustR','DDA&Matrix&CAMERA','DDA&Matrix&CAMERA&RAMClustR','DDA&Matrix&RAMClustR','DDA&PMD','DDA&PMD&CAMERA','DDA&PMD&CAMERA&RAMClustR','DDA&PMD&RAMClustR','DDA&CAMERA','DDA&CAMERA&RAMClustR','DDA&RAMClustR','Matrix','Matrix&CAMERA&RAMClustR','PMD','PMD&CAMERA','PMD&CAMERA&RAMClustR','PMD&RAMClustR','CAMERA','CAMERA&RAMClustR','RAMClustR')
+fit1 <- euler(num)
+png('comparepos.png',res=300,width = 2000,height = 2000)
+plot(fit1,quantities = TRUE)
+dev.off()
+
+num <- as.numeric(table(neggnps$DefaultGroups))
+names(num) <- c('Matrix','DDA&Matrix','DDA&Matrix&RAMClustR','DDA&Matrix&PMD&CAMERA&RAMClustR','DDA&Matrix&CAMERA&RAMClustR','DDA&Matrix&CAMERA','DDA','DDA&RAMClustR','DDA&PMD&RAMClustR','DDA&PMD&CAMERA&RAMClustR','DDA&PMD','DDA&CAMERA&PMD','DDA&CAMERA','RAMClustR','RAMClustR&PMD','PMD','PMD&CAMERA','CAMERA')
+fit1 <- euler(num)
+png('compareneg.png',res=300,width = 2000,height = 2000)
+plot(fit1,quantities = TRUE)
+dev.off()
 ```
 
 ## Extract mgf files
@@ -410,6 +542,6 @@ anno2 <- enviGCMS::xrankanno(file,db = qtof)
 unique(anno2$name)
 # pmd msms annotation
 anno3 <- pmd::pmdanno(file,db=qtof)
-unique(anno2$name)
+unique(anno3$name)
 enviGCMS::plotanno(anno3)
 ```

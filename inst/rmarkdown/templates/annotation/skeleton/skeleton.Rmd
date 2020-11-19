@@ -109,7 +109,6 @@ write.table(dataTable, "xcms_all.txt", sep = "\t", quote = FALSE,
 
 ```
 
-
 ## xMSannotator
 
 ```{r anno, eval=F}
@@ -265,6 +264,15 @@ mb <- loadInfolist(mb,system.file("infolists/PlantDataset.csv",
 mb <- mbWorkflow(mb, steps=1:8)
 
 ```
+
+## Local MS1 annotation
+
+```{r}
+# using hmdb and refmet compounds database with predefined adducts
+data(hr)
+re <- enviGCMS::getms1anno(c('Na-H','H','Na'),c(282.279, 281.113, 227.139, 227.139, 302.207), ppm = 5, db=hr)
+```
+
 
 ## Local MS2 annotation
 
