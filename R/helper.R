@@ -33,6 +33,3 @@ getmwfactor <- function(ID){
     df <- data.frame(matrix(unlist(list), nrow=length(list), byrow=T))
     return(df)
 }
-
-
-

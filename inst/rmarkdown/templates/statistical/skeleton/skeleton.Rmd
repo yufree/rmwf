@@ -102,6 +102,7 @@ train <- fs$data[, trainIndex]
 train <- cbind.data.frame(Y=fs$group$sample_group[trainIndex],t(train))
 test  <- fs$data[,-trainIndex]
 test  <- cbind.data.frame(Y=fs$group$sample_group[-trainIndex],t(test))
+
 ## Train the model
 library(doParallel)
 registerDoParallel(4)

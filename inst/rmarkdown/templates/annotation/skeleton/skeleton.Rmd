@@ -273,7 +273,6 @@ data(hr)
 re <- enviGCMS::getms1anno(c('Na-H','H','Na'),c(282.279, 281.113, 227.139, 227.139, 302.207), ppm = 5, db=hr)
 ```
 
-
 ## Local MS2 annotation
 
 ```{r}
