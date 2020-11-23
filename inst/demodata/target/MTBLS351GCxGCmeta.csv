@@ -1,0 +1,322 @@
+"","database_identifier","chemical_formula","smiles","inchi","metabolite_identification","mass_to_charge","fragmentation","modifications","charge","retention_time","taxid","species","database","database_version","reliability","uri","search_engine","search_engine_score","smallmolecule_abundance_sub","smallmolecule_abundance_stdev_sub","smallmolecule_abundance_std_error_sub"
+"1","CHEBI:86348","C4H8O4","OCCC(O)C(O)=O","InChI=1S/C4H8O4/c5-2-1-3(6)4(7)8/h3,5-6H,1-2H2,(H,7,8)","2,4-Dihydroxybutanoic acid, 3TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"2","CHEBI:1148","C4H8O3","CCC(O)C(O)=O","InChI=1S/C4H8O3/c1-2-3(5)4(6)7/h3,5H,2H2,1H3,(H,6,7)","2-Hydroxybutyric acid, 2TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"3","CHEBI:86371","C4H8O4","OCC(O)CC(O)=O","InChI=1S/C4H8O4/c5-2-3(6)1-4(7)8/h3,5-6H,1-2H2,(H,7,8)","3,4-Dihydroxybutanoic acid, 3TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"4","CHEBI:20067","C4H8O3","CC(O)CC(O)=O","InChI=1S/C4H8O3/c1-3(5)2-4(6)7/h3,5H,2H2,1H3,(H,6,7)","3-Hydroxybutyric acid, 2TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"5","CHEBI:16449","C3H7NO2","CC(N)C(O)=O","InChI=1S/C3H7NO2/c1-2(4)3(5)6/h2H,4H2,1H3,(H,5,6)","Alanine, 2TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"6","CHEBI:15843","C20H32O2","CCCCCC=C/CC=C/CC=C/CC=C/CCCC(O)=O","InChI=1S/C20H32O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18-19-20(21)22/h6-7,9-10,12-13,15-16H,2-5,8,11,14,17-19H2,1H3,(H,21,22)/b7-6-,10-9-,13-12-,16-15-","Arachidonic acid, TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"7","CHEBI:22660","C4H7NO4","NC(CC(O)=O)C(O)=O","InChI=1S/C4H7NO4/c5-2(4(8)9)1-3(6)7/h2H,1,5H2,(H,6,7)(H,8,9)","Aspartic acid, 3TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"8","CHEBI:16113","C27H46O","CC(C)CCC[C@@H](C)[C@H]1CC[C@H]2[C@@H]3CC=C4C[C@@H](O)CC[C@]4(C)[C@H]3CC[C@]12C","InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3/t19-,21+,22+,23-,24+,25+,26+,27-/m1/s1","Cholesterol, TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"9","CHEBI:30769","C6H8O7","OC(=O)CC(O)(CC(O)=O)C(O)=O","InChI=1S/C6H8O7/c7-3(8)1-6(13,5(11)12)2-4(9)10/h13H,1-2H2,(H,7,8)(H,9,10)(H,11,12)","Citric acid, 4TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"10","CHEBI:18237","C5H9NO4","NC(CCC(O)=O)C(O)=O","InChI=1S/C5H9NO4/c6-3(5(9)10)1-2-4(7)8/h3H,1-2,6H2,(H,7,8)(H,9,10)","Glutamic acid, 3TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"11","CHEBI:33508","C3H6O4","OCC(O)C(O)=O","InChI=1S/C3H6O4/c4-1-2(5)3(6)7/h2,4-5H,1H2,(H,6,7)","Glyceric acid, 3TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"12","CHEBI:15428","C2H5NO2","NCC(O)=O","InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)","Glycine, 3TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"13","CHEBI:24898","C6H13NO2",NA,NA,"Isoleucine, 2TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"14","CHEBI:25017","C6H13NO2","CC(C)CC(N)C(O)=O","InChI=1S/C6H13NO2/c1-4(2)3-5(7)6(8)9/h4-5H,3,7H2,1-2H3,(H,8,9)","Leucine, 2TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"15","CHEBI:17351","C18H32O2","CCCCCC=C/CC=C/CCCCCCCC(O)=O","InChI=1S/C18H32O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h6-7,9-10H,2-5,8,11-17H2,1H3,(H,19,20)/b7-6-,10-9-","Linoleic acid, TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"16","CHEBI:16811","C5H11NO2S","CSCCC(N)C(O)=O","InChI=1S/C5H11NO2S/c1-9-3-2-4(6)5(7)8/h4H,2-3,6H2,1H3,(H,7,8)","Methionine, 2TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"17","CHEBI:16196","C18H34O2","CCCCCCCCC=C/CCCCCCCC(O)=O","InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)/b10-9-","Oleic acid, TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"18","CHEBI:18257","C5H12N2O2","NCCCC(N)C(O)=O","InChI=1S/C5H12N2O2/c6-3-1-2-4(7)5(8)9/h4H,1-3,6-7H2,(H,8,9)","Ornithine, 4TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"19","CHEBI:15756","C16H32O2","CCCCCCCCCCCCCCCC(O)=O","InChI=1S/C16H32O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16(17)18/h2-15H2,1H3,(H,17,18)","Palmitic acid, TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"20","CHEBI:28044","C9H11NO2","NC(Cc1ccccc1)C(O)=O","InChI=1S/C9H11NO2/c10-8(9(11)12)6-7-4-2-1-3-5-7/h1-5,8H,6,10H2,(H,11,12)","Phenylalanine, 2TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"21","CHEBI:26271","C5H9NO2","OC(=O)C1CCCN1","InChI=1S/C5H9NO2/c7-5(8)4-2-1-3-6-4/h4,6H,1-3H2,(H,7,8)","Proline, 2TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"22","CHEBI:17822","C3H7NO3","NC(CO)C(O)=O","InChI=1S/C3H7NO3/c4-2(1-5)3(6)7/h2,5H,1,4H2,(H,6,7)","Serine, 3TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"23","CHEBI:28842","C18H36O2","C(CCCCCCCCCC)CCCCCCC(=O)O","InChI=1S/C18H36O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h2-17H2,1H3,(H,19,20)","Stearic acid, TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"24","CHEBI:26986","C4H9NO3",NA,NA,"Threonine, 3TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"25","CHEBI:18186","C9H11NO3","NC(Cc1ccc(O)cc1)C(O)=O","InChI=1S/C9H11NO3/c10-8(9(12)13)5-6-1-3-7(11)4-2-6/h1-4,8,11H,5,10H2,(H,12,13)","Tyrosine, 3TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"26","CHEBI:27266","C5H11NO2","CC(C)C(N)C(O)=O","InChI=1S/C5H11NO2/c1-3(2)4(6)5(7)8/h3-4H,6H2,1-2H3,(H,7,8)","Valine, 2TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"27","CHEBI:32425","C20H38O2","CCCCCCCCC=C/CCCCCCCCCC(O)=O","InChI=1S/C20H38O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18-19-20(21)22/h9-10H,2-8,11-19H2,1H3,(H,21,22)/b10-9-","11-Eicosenoic acid, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"28","CHEBI:16411","C10H9NO2","OC(=O)Cc1c[nH]c2ccccc12","InChI=1S/C10H9NO2/c12-10(13)5-7-6-11-9-4-2-1-3-8(7)9/h1-4,6,11H,5H2,(H,12,13)","1H-Indole-3-acetic acid, 1-(trimethylsilyl)-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"29","CHEBI:131342","C21H40O4","OC(CO)COC(=O)CCCCCCC/C=C/CCCCCCCC","InChI=1S/C21H40O4/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-21(24)25-19-20(23)18-22/h9-10,20,22-23H,2-8,11-19H2,1H3/b10-9+","1-Monooleoylglycerol trimethylsilyl ether",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"30","CHEBI:32154","C18H38O","C(CCCCCCCCC)CCCCCCCCO","InChI=1S/C18H38O/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18-19/h19H,2-18H2,1H3","Silane, trimethyl(octadecyloxy)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"31","CHEBI:86347","C4H8O4","CC(O)C(O)C(O)=O","InChI=1S/C4H8O4/c1-2(5)3(6)4(7)8/h2-3,5-6H,1H3,(H,7,8)","(R*,R*)-2,3-Dihydroxybutanoic acid, tris(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"32","CHEBI:35621","C4H9NO2","CCC(N)C(O)=O","InChI=1S/C4H9NO2/c1-2-3(5)4(6)7/h3H,2,5H2,1H3,(H,6,7)","Butanoic acid, 2-[(trimethylsilyl)amino]-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"33","CHEBI:18012","C4H4O4","OC(=O)C=CC(O)=O","InChI=1S/C4H4O4/c5-3(6)1-2-4(7)8/h1-2H,(H,5,6)(H,7,8)/b2-1+","2-Butenedioic acid (E)-, bis(trimethylsilyl) ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"34","CHEBI:82956","C5H10O3","CCC(CO)C(O)=O","InChI=1S/C5H10O3/c1-2-4(3-6)5(7)8/h4,6H,2-3H2,1H3,(H,7,8)","2-Ethyl-3-hydroxypropionic acid, di-TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"35","CHEBI:16530","C5H8O3","CC(C)C(=O)C(O)=O","InChI=1S/C5H8O3/c1-3(2)4(6)5(7)8/h3H,1-2H3,(H,7,8)","*2-Oxoisovaleric acid (peak 1), MEOX TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"36","CHEBI:131364","C5H10O5","OC(C(O)C)C(O)C(O)=O","InChI=1S/C5H10O5/c1-2(6)3(7)4(8)5(9)10/h2-4,6-8H,1H3,(H,9,10)","3,4,5-Trihydroxypentanoic acid, tetrakis(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"37","CHEBI:34445","C14H22O","CC(C)(C)CC(C)(C)c1ccc(O)cc1","InChI=1S/C14H22O/c1-13(2,3)10-14(4,5)11-6-8-12(15)9-7-11/h6-9,15H,10H2,1-5H3","Trimethyl[4-(1,1,3,3,-tetramethylbutyl)phenoxy]silane",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"38","CHEBI:48430","C6H10O3","CC(C)CC(=O)C(O)=O","InChI=1S/C6H10O3/c1-4(2)3-5(7)6(8)9/h4H,3H2,1-2H3,(H,8,9)","*4-Methyl-2-oxovaleric acid, TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"39","CHEBI:17497","C2H4O3","OCC(O)=O","InChI=1S/C2H4O3/c3-1-2(4)5/h3H,1H2,(H,4,5)","Acetic acid, [(trimethylsilyl)oxy]-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"40","CHEBI:30915","C5H6O5","OC(=O)CCC(=O)C(O)=O","InChI=1S/C5H6O5/c6-3(5(9)10)1-2-4(7)8/h1-2H2,(H,7,8)(H,9,10)","*Alpha-ketoglutaric acid, MEOX TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"41","CHEBI:17475","C3H5NO4","NC(C(O)=O)C(O)=O","InChI=1S/C3H5NO4/c4-1(2(5)6)3(7)8/h1H,4H2,(H,5,6)(H,7,8)","Aminomalonic acid, tris(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"42","CHEBI:22605","C5H12O5",NA,NA,"Arabinitol, pentakis-O-(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"43","CHEBI:6178","C5H10O5","OC[C@@H]1OC(O)[C@H](O)[C@H]1O","InChI=1S/C5H10O5/c6-1-2-3(7)4(8)5(9)10-2/h2-9H,1H2/t2-,3-,4+,5?/m0/s1","Arabinofuranose, 1,2,3,5-tetrakis-O-(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"44","CHEBI:131388","C4H10O3","OC(C(O)C)CO","InChI=1S/C4H10O3/c1-3(6)4(7)2-5/h3-7H,2H2,1H3","Butane, 1,2,3-tris(trimethylsiloxy)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"45","CHEBI:16737","C4H7N3O","CN1CC(=O)NC1=N","InChI=1S/C4H7N3O/c1-7-2-3(8)6-4(7)5/h2H2,1H3,(H2,5,6,8)","*Creatinine, ?TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"46","CHEBI:30813","C10H20O2","C(CCCCCC)CCC(=O)O","InChI=1S/C10H20O2/c1-2-3-4-5-6-7-8-9-10(11)12/h2-9H2,1H3,(H,11,12)","*Decanoic acid, TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"47","CHEBI:15824","C6H12O6",NA,NA,"D-Fructose, 1,3,4,5,6-pentakis-O-(trimethylsilyl)-, O-methyloxime",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"48","CHEBI:28847","C6H12O5",NA,NA,"D-Galactose, 6-deoxy-2,3,4,5-tetrakis-O-(trimethylsilyl)-, O-methyloxime",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"49","CHEBI:4139","C6H12O6","OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@H]1O","InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3+,4+,5-,6?/m1/s1","d-Galactose, 2,3,4,5,6-pentakis-O-(trimethylsilyl)-, o-methyloxyme, (1Z)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"50","CHEBI:4167","C6H12O6","OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O","InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6?/m1/s1","d-Glucose, 2,3,4,5,6-pentakis-O-(trimethylsilyl)-, o-methyloxyme, (1E)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"51","CHEBI:53455","C5H10O5","O[C@@H]1COC(O)[C@H](O)[C@H]1O","InChI=1S/C5H10O5/c6-2-1-10-5(9)4(8)3(2)7/h2-9H,1H2/t2-,3+,4-,5?/m1/s1","D-Xylopyranose, 1,2,3,4-tetrakis-O-(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"52","CHEBI:17113","C4H10O4","OC[C@H](O)[C@H](O)CO","InChI=1S/C4H10O4/c5-1-3(7)4(8)2-6/h3-8H,1-2H2/t3-,4+","3,8-Dioxa-2,9-disiladecane, 2,2,9,9-tetramethyl-5,6-bis[(trimethylsilyl)oxy]-, (R*,S*)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"53","CHEBI:49060","C4H8O5","OCC(O)C(O)C(O)=O","InChI=1S/C4H8O5/c5-1-2(6)3(7)4(8)9/h2-3,5-7H,1H2,(H,8,9)","2,3,4-Trihydroxybutyric acid tetrakis(trimethylsilyl) deriv.",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"54","CHEBI:16000","C2H7NO","NCCO","InChI=1S/C2H7NO/c3-1-2-4/h4H,1-3H2","Silanamine, 1,1,1-trimethyl-N-(trimethylsilyl)-N-[2-[(trimethylsilyl)oxy]ethyl]-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"55","CHEBI:24149","C6H12O7",NA,NA,"Galactonic acid (6TMS)",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"56","CHEBI:37661","C6H12O6",NA,NA,"Glucopyranose, pentakis-O-trimethylsilyl-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"57","CHEBI:17754","C3H8O3","OCC(O)CO","InChI=1S/C3H8O3/c4-1-3(6)2-5/h3-6H,1-2H2","Trimethylsilyl ether of glycerol",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"58","CHEBI:17270","C3H9O6P","OCC(CO)OP(O)(O)=O","InChI=1S/C3H9O6P/c4-1-3(2-5)9-10(6,7)8/h3-5H,1-2H2,(H2,6,7,8)","*Glycerol-2-phosphate, 4TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"59","CHEBI:60982","C7H14O6",NA,NA,"Glycoside, ?-methyl-trtrakis-O-(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"60","CHEBI:69081","C19H38O4","CCCCCCCCCCCCCCCC(=O)OCC(O)CO","InChI=1S/C19H38O4/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-19(22)23-17-18(21)16-20/h18,20-21H,2-17H2,1H3","Hexadecanoic acid, 2,3-bis[(trimethylsilyl)oxy]propyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"61","CHEBI:17385","C9H10O4","OC(Cc1ccc(O)cc1)C(O)=O","InChI=1S/C9H10O4/c10-7-3-1-6(2-4-7)5-8(11)9(12)13/h1-4,8,10-11H,5H2,(H,12,13)","Benzenepropanoic acid, ?,4-bis[(trimethylsilyl)oxy]-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"62","CHEBI:78320","C3H6O3","CC(O)C(O)=O","InChI=1S/C3H6O3/c1-2(4)3(5)6/h2,4H,1H3,(H,5,6)","Lactic acid, 2TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"63","CHEBI:30805","C12H24O2","CCCCCCCCCCCC(O)=O","InChI=1S/C12H24O2/c1-2-3-4-5-6-7-8-9-10-11-12(13)14/h2-11H2,1H3,(H,13,14)","*Lauric acid, TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"64","CHEBI:17561","C3H7NO2S","N[C@@H](CS)C(O)=O","InChI=1S/C3H7NO2S/c4-2(1-7)3(5)6/h2,7H,1,4H2,(H,5,6)/t2-/m0/s1","L-Cysteine, N,S-bis(trimethylsilyl)-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"65","CHEBI:30997","C6H10O5","O[C@@H]1[C@H]2CO[C@H](O2)[C@H](O)[C@H]1O","InChI=1S/C6H10O5/c7-3-2-1-10-6(11-2)5(9)4(3)8/h2-9H,1H2/t2-,3-,4+,5-,6-/m1/s1","Levoglucosan, tris(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"66","CHEBI:27432","C18H30O2","CCC=C/CC=C/CC=C/CCCCCCCC(O)=O","InChI=1S/C18H30O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h3-4,6-7,9-10H,2,5,8,11-17H2,1H3,(H,19,20)/b4-3-,7-6-,10-9-","Linolenic acid, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"67","CHEBI:16010","C5H7NO3","OC(=O)C1CCC(=O)N1","InChI=1S/C5H7NO3/c7-4-2-1-3(6-4)5(8)9/h3H,1-2H2,(H,6,7)(H,8,9)","L-Proline, 5-oxo-1-(trimethylsilyl)-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"68","CHEBI:16857","C4H9NO3","C[C@@H](O)[C@H](N)C(O)=O","InChI=1S/C4H9NO3/c1-2(6)3(5)4(7)8/h2-3,6H,5H2,1H3,(H,7,8)/t2-,3+/m1/s1","l-Threonine, O-(trimethylsilyl)-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"69","CHEBI:16828","C11H12N2O2","N[C@@H](Cc1c[nH]c2ccccc12)C(O)=O","InChI=1S/C11H12N2O2/c12-9(11(14)15)5-7-6-13-10-4-2-1-3-8(7)10/h1-4,6,9,13H,5,12H2,(H,14,15)/t9-/m0/s1","L-Tryptophan, N,1-bis(trimethylsilyl)-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"70","CHEBI:6650","C4H6O5","OC(CC(O)=O)C(O)=O","InChI=1S/C4H6O5/c5-2(4(8)9)1-3(6)7/h2,5H,1H2,(H,6,7)(H,8,9)","Malic acid, tris(trimethylsilyl) ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"71","CHEBI:75555","C21H42O4","CCCCCCCCCCCCCCCCCC(=O)OCC(O)CO","InChI=1S/C21H42O4/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-21(24)25-19-20(23)18-22/h20,22-23H,2-19H2,1H3","Bis(trimethylsilyl)monostearin",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"72","CHEBI:17268","C6H12O6","O[C@H]1[C@H](O)[C@@H](O)[C@H](O)[C@H](O)[C@@H]1O","InChI=1S/C6H12O6/c7-1-2(8)4(10)6(12)5(11)3(1)9/h1-12H/t1-,2-,3-,4+,5-,6-","Myo-Inositol, 1,2,3,4,5,6-hexakis-O-(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"73","CHEBI:28875","C14H28O2","CCCCCCCCCCCCCC(O)=O","InChI=1S/C14H28O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14(15)16/h2-13H2,1H3,(H,15,16)","*Myristic acid, TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"74","CHEBI:29019","C9H18O2","CCCCCCCCC(O)=O","InChI=1S/C9H18O2/c1-2-3-4-5-6-7-8-9(10)11/h2-8H2,1H3,(H,10,11)","*Nonanoic acid, TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"75","CHEBI:28837","C8H16O2","CCCCCCCC(O)=O","InChI=1S/C8H16O2/c1-2-3-4-5-6-7-8(9)10/h2-7H2,1H3,(H,9,10)","Octanoic acid, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"76","CHEBI:59265","C16H30O2","CCCCCCC=CCCCCCCCC(O)=O","InChI=1S/C16H30O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16(17)18/h7-8H,2-6,9-15H2,1H3,(H,17,18)/b8-7+","Palmitelaidic acid, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"77","CHEBI:111506","C5H12O4","C(C(CO)O)C(CO)O","InChI=1S/C5H12O4/c6-2-4(8)1-5(9)3-7/h4-9H,1-3H2","Pentitol, 3-desoxy-tetrakis-O-(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"78","CHEBI:28044","C9H11NO2","NC(Cc1ccccc1)C(O)=O","InChI=1S/C9H11NO2/c10-8(9(11)12)6-7-4-2-1-3-5-7/h1-5,8H,6,10H2,(H,11,12)","Alanine, phenyl-, trimethylsilyl ester, dl-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"79","CHEBI:26078","H3O4P","[H]OP(=O)(O[H])O[H]","InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)","Phosphoric acid, bis(trimethylsilyl)monomethyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"80","CHEBI:20392","C5H9NO3","OC1CNC(C1)C(O)=O","InChI=1S/C5H9NO3/c7-3-1-4(5(8)9)6-2-3/h3-4,6-7H,1-2H2,(H,8,9)","L-Proline, 1-(trimethylsilyl)-4-[(trimethylsilyl)oxy]-, trimethylsilyl ester, trans-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"81","CHEBI:20392","C5H9NO3","OC1CNC(C1)C(O)=O","InChI=1S/C5H9NO3/c7-3-1-4(5(8)9)6-2-3/h3-4,6-7H,1-2H2,(H,8,9)","Trimethylsiloxy(trimethylsilyl)proline",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"82","CHEBI:32816","C3H4O3","CC(=O)C(O)=O","InChI=1S/C3H4O3/c1-2(4)3(5)6/h1H3,(H,5,6)","*Pyruvic acid, MEOX TMS",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"83","CHEBI:33511","C5H10O6",NA,NA,"Ribonic acid, 2,3,4,5-tetrakis-O-(trimethylsilyl)-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"84","CHEBI:27897","C11H12N2O2","NC(Cc1c[nH]c2ccccc12)C(O)=O","InChI=1S/C11H12N2O2/c12-9(11(14)15)5-7-6-13-10-4-2-1-3-8(7)10/h1-4,6,9,13H,5,12H2,(H,14,15)","Tryptophan, bis(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"85","CHEBI:18186","C9H11NO3","NC(Cc1ccc(O)cc1)C(O)=O","InChI=1S/C9H11NO3/c10-8(9(12)13)5-6-1-3-7(11)4-2-6/h1-4,8,11H,5,10H2,(H,12,13)","Tyrosine, O-trimethylsilyl-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"86","CHEBI:16199","CH4N2O","NC(N)=O","InChI=1S/CH4N2O/c2-1(3)4/h(H4,2,3,4)","Urea, N,N'-bis(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"87","CHEBI:17151","C5H12O5","OC[C@H](O)[C@@H](O)[C@H](O)CO","InChI=1S/C5H12O5/c6-1-3(8)5(10)4(9)2-7/h3-10H,1-2H2/t3-,4+,5+","Xylitol, 1,2,3,4,5-pentakis-O-(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"88","CHEBI:60645","C5H10O3","CC(C)C(O)C(O)=O","InChI=1S/C5H10O3/c1-3(2)4(6)5(7)8/h3-4,6H,1-2H3,(H,7,8)","Butanoic acid, 3-methyl-2-[(trimethylsilyl)oxy]-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"89","CHEBI:59497","C6H12O6","[H][C@]1(O[C@@H](O)[C@H](O)[C@H]1O)[C@H](O)CO","InChI=1S/C6H12O6/c7-1-2(8)5-3(9)4(10)6(11)12-5/h2-11H,1H2/t2-,3-,4-,5+,6-/m1/s1","?-D-Galactofuranose, 1,2,3,5,6-pentakis-O-(trimethylsilyl)-",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"90","CHEBI:37084","C5H10O3","CC(C)(O)CC(O)=O","InChI=1S/C5H10O3/c1-5(2,8)3-4(6)7/h8H,3H2,1-2H3,(H,6,7)","Butanoic acid, 3-methyl-3-[(trimethylsilyl)oxy]-, trimethylsilyl ester",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"91","unknown",NA,NA,NA,"M_40_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"92","unknown",NA,NA,NA,"M_69_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"93","unknown",NA,NA,NA,"M_72_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"94","unknown",NA,NA,NA,"M_49_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"95","unknown",NA,NA,NA,"M_45_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"96","unknown",NA,NA,NA,"M_48_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"97","unknown",NA,NA,NA,"M_78_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"98","unknown",NA,NA,NA,"M_66_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"99","unknown",NA,NA,NA,"M_53_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"100","unknown",NA,NA,NA,"M_147_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"101","unknown",NA,NA,NA,"M_67_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"102","unknown",NA,NA,NA,"M_55_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"103","unknown",NA,NA,NA,"M_42_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"104","unknown",NA,NA,NA,"M_122_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"105","unknown",NA,NA,NA,"M_141_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"106","unknown",NA,NA,NA,"M_58_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"107","unknown",NA,NA,NA,"M_130_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"108","unknown",NA,NA,NA,"M_93_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"109","unknown",NA,NA,NA,"M_68_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"110","unknown",NA,NA,NA,"M_136_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"111","unknown",NA,NA,NA,"M_110_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"112","unknown",NA,NA,NA,"M_57_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"113","unknown",NA,NA,NA,"M_70_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"114","unknown",NA,NA,NA,"M_922_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"115","unknown",NA,NA,NA,"M_90_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"116","unknown",NA,NA,NA,"M_128_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"117","unknown",NA,NA,NA,"M_144_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"118","unknown",NA,NA,NA,"M_77_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"119","unknown",NA,NA,NA,"M_84_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"120","unknown",NA,NA,NA,"M_80_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"121","unknown",NA,NA,NA,"M_79_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"122","unknown",NA,NA,NA,"M_92_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"123","unknown",NA,NA,NA,"M_195_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"124","unknown",NA,NA,NA,"M_172_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"125","unknown",NA,NA,NA,"M_109_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"126","unknown",NA,NA,NA,"M_1071_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"127","unknown",NA,NA,NA,"M_133_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"128","unknown",NA,NA,NA,"M_146_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"129","unknown",NA,NA,NA,"M_91_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"130","unknown",NA,NA,NA,"M_161_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"131","unknown",NA,NA,NA,"M_1074_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"132","unknown",NA,NA,NA,"M_924_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"133","unknown",NA,NA,NA,"M_95_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"134","unknown",NA,NA,NA,"M_112_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"135","unknown",NA,NA,NA,"M_100_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"136","unknown",NA,NA,NA,"M_94_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"137","unknown",NA,NA,NA,"M_927_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"138","unknown",NA,NA,NA,"M_107_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"139","unknown",NA,NA,NA,"M_166_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"140","unknown",NA,NA,NA,"M_104_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"141","unknown",NA,NA,NA,"M_135_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"142","unknown",NA,NA,NA,"M_106_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"143","unknown",NA,NA,NA,"M_192_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"144","unknown",NA,NA,NA,"M_105_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"145","unknown",NA,NA,NA,"M_114_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"146","unknown",NA,NA,NA,"M_190_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"147","unknown",NA,NA,NA,"M_173_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"148","unknown",NA,NA,NA,"M_121_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"149","unknown",NA,NA,NA,"M_153_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"150","unknown",NA,NA,NA,"M_199_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"151","unknown",NA,NA,NA,"M_118_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"152","unknown",NA,NA,NA,"M_203_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"153","unknown",NA,NA,NA,"M_117_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"154","unknown",NA,NA,NA,"M_151_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"155","unknown",NA,NA,NA,"M_143_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"156","unknown",NA,NA,NA,"M_150_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"157","unknown",NA,NA,NA,"M_194_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"158","unknown",NA,NA,NA,"M_134_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"159","unknown",NA,NA,NA,"M_160_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"160","unknown",NA,NA,NA,"M_182_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"161","unknown",NA,NA,NA,"M_149_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"162","unknown",NA,NA,NA,"M_222_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"163","unknown",NA,NA,NA,"M_154_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"164","unknown",NA,NA,NA,"M_155_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"165","unknown",NA,NA,NA,"M_174_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"166","unknown",NA,NA,NA,"M_168_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"167","unknown",NA,NA,NA,"M_207_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"168","unknown",NA,NA,NA,"M_228_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"169","unknown",NA,NA,NA,"M_301_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"170","unknown",NA,NA,NA,"M_269_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"171","unknown",NA,NA,NA,"M_256_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"172","unknown",NA,NA,NA,"M_188_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"173","unknown",NA,NA,NA,"M_956_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"174","unknown",NA,NA,NA,"M_218_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"175","unknown",NA,NA,NA,"M_185_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"176","unknown",NA,NA,NA,"M_5555_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"177","unknown",NA,NA,NA,"M_187_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"178","unknown",NA,NA,NA,"M_226_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"179","unknown",NA,NA,NA,"M_189_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"180","unknown",NA,NA,NA,"M_201_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"181","unknown",NA,NA,NA,"M_196_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"182","unknown",NA,NA,NA,"M_235_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"183","unknown",NA,NA,NA,"M_197_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"184","unknown",NA,NA,NA,"M_1075_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"185","unknown",NA,NA,NA,"M_232_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"186","unknown",NA,NA,NA,"M_213_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"187","unknown",NA,NA,NA,"M_241_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"188","unknown",NA,NA,NA,"M_933_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"189","unknown",NA,NA,NA,"M_205_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"190","unknown",NA,NA,NA,"M_237_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"191","unknown",NA,NA,NA,"M_216_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"192","unknown",NA,NA,NA,"M_227_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"193","unknown",NA,NA,NA,"M_247_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"194","unknown",NA,NA,NA,"M_219_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"195","unknown",NA,NA,NA,"M_936_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"196","unknown",NA,NA,NA,"M_221_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"197","unknown",NA,NA,NA,"M_268_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"198","unknown",NA,NA,NA,"M_243_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"199","unknown",NA,NA,NA,"M_246_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"200","unknown",NA,NA,NA,"M_231_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"201","unknown",NA,NA,NA,"M_245_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"202","unknown",NA,NA,NA,"M_940_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"203","unknown",NA,NA,NA,"M_1076_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"204","unknown",NA,NA,NA,"M_258_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"205","unknown",NA,NA,NA,"M_240_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"206","unknown",NA,NA,NA,"M_236_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"207","unknown",NA,NA,NA,"M_1078_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"208","unknown",NA,NA,NA,"M_249_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"209","unknown",NA,NA,NA,"M_238_Unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"210","unknown",NA,NA,NA,"M_257_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"211","unknown",NA,NA,NA,"M_252_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"212","unknown",NA,NA,NA,"M_267_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"213","unknown",NA,NA,NA,"M_244_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"214","unknown",NA,NA,NA,"M_248_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"215","unknown",NA,NA,NA,"M_253_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"216","unknown",NA,NA,NA,"M_951_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"217","unknown",NA,NA,NA,"M_266_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"218","unknown",NA,NA,NA,"M_251_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"219","unknown",NA,NA,NA,"M_255_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"220","unknown",NA,NA,NA,"M_947_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"221","unknown",NA,NA,NA,"M_1084_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"222","unknown",NA,NA,NA,"M_254_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"223","unknown",NA,NA,NA,"M_270_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"224","unknown",NA,NA,NA,"M_281_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"225","unknown",NA,NA,NA,"M_263_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"226","unknown",NA,NA,NA,"M_949_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"227","unknown",NA,NA,NA,"M_262_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"228","unknown",NA,NA,NA,"M_1081_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"229","unknown",NA,NA,NA,"M_259_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"230","unknown",NA,NA,NA,"M_260_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"231","unknown",NA,NA,NA,"M_276_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"232","unknown",NA,NA,NA,"M_275_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"233","unknown",NA,NA,NA,"M_952_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"234","unknown",NA,NA,NA,"M_272_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"235","unknown",NA,NA,NA,"M_955_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"236","unknown",NA,NA,NA,"M_285_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"237","unknown",NA,NA,NA,"M_283_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"238","unknown",NA,NA,NA,"M_277_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"239","unknown",NA,NA,NA,"M_1085_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"240","unknown",NA,NA,NA,"M_1086_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"241","unknown",NA,NA,NA,"M_278_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"242","unknown",NA,NA,NA,"M_295_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"243","unknown",NA,NA,NA,"M_954_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"244","unknown",NA,NA,NA,"M_289_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"245","unknown",NA,NA,NA,"M_282_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"246","unknown",NA,NA,NA,"M_280_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"247","unknown",NA,NA,NA,"M_288_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"248","unknown",NA,NA,NA,"M_1087_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"249","unknown",NA,NA,NA,"M_300_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"250","unknown",NA,NA,NA,"M_287_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"251","unknown",NA,NA,NA,"M_1089_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"252","unknown",NA,NA,NA,"M_319_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"253","unknown",NA,NA,NA,"M_292_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"254","unknown",NA,NA,NA,"M_1088_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"255","unknown",NA,NA,NA,"M_291_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"256","unknown",NA,NA,NA,"M_290_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"257","unknown",NA,NA,NA,"M_299_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"258","unknown",NA,NA,NA,"M_294_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"259","unknown",NA,NA,NA,"M_306_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"260","unknown",NA,NA,NA,"M_1033_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"261","unknown",NA,NA,NA,"M_311_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"262","unknown",NA,NA,NA,"M_297_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"263","unknown",NA,NA,NA,"M_302_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"264","unknown",NA,NA,NA,"M_966_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"265","unknown",NA,NA,NA,"M_959_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"266","unknown",NA,NA,NA,"M_323_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"267","unknown",NA,NA,NA,"M_314_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"268","unknown",NA,NA,NA,"M_322_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"269","unknown",NA,NA,NA,"M_317_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"270","unknown",NA,NA,NA,"M_1091_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"271","unknown",NA,NA,NA,"M_1065_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"272","unknown",NA,NA,NA,"M_325_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"273","unknown",NA,NA,NA,"M_312_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"274","unknown",NA,NA,NA,"M_324_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"275","unknown",NA,NA,NA,"M_315_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"276","unknown",NA,NA,NA,"M_316_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"277","unknown",NA,NA,NA,"M_960_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"278","unknown",NA,NA,NA,"M_327_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"279","unknown",NA,NA,NA,"M_1093_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"280","unknown",NA,NA,NA,"M_961_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"281","unknown",NA,NA,NA,"M_328_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"282","unknown",NA,NA,NA,"M_336_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"283","unknown",NA,NA,NA,"M_335_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"284","unknown",NA,NA,NA,"M_326_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"285","unknown",NA,NA,NA,"M_331_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"286","unknown",NA,NA,NA,"M_1097_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"287","unknown",NA,NA,NA,"M_973_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"288","unknown",NA,NA,NA,"M_965_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"289","unknown",NA,NA,NA,"M_332_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"290","unknown",NA,NA,NA,"M_330_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"291","unknown",NA,NA,NA,"M_334_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"292","unknown",NA,NA,NA,"M_964_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"293","unknown",NA,NA,NA,"M_1621_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"294","unknown",NA,NA,NA,"M_1098_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"295","unknown",NA,NA,NA,"M_342_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"296","unknown",NA,NA,NA,"M_1099_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"297","unknown",NA,NA,NA,"M_1057_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"298","unknown",NA,NA,NA,"M_338_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"299","unknown",NA,NA,NA,"M_967_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"300","unknown",NA,NA,NA,"M_1102_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"301","unknown",NA,NA,NA,"M_341_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"302","unknown",NA,NA,NA,"M_975_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"303","unknown",NA,NA,NA,"M_340_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"304","unknown",NA,NA,NA,"M_343_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"305","unknown",NA,NA,NA,"M_1101_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"306","unknown",NA,NA,NA,"M_971_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"307","unknown",NA,NA,NA,"M_349_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"308","unknown",NA,NA,NA,"M_344_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"309","unknown",NA,NA,NA,"M_969_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"310","unknown",NA,NA,NA,"M_972_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"311","unknown",NA,NA,NA,"M_1103_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"312","unknown",NA,NA,NA,"M_2085_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"313","unknown",NA,NA,NA,"M_347_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"314","unknown",NA,NA,NA,"M_1105_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"315","unknown",NA,NA,NA,"M_1104_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"316","unknown",NA,NA,NA,"M_1038_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"317","unknown",NA,NA,NA,"M_354_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"318","unknown",NA,NA,NA,"M_348_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"319","unknown",NA,NA,NA,"M_351_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"320","unknown",NA,NA,NA,"M_356_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA
+"321","unknown",NA,NA,NA,"M_2799_unknown",NA,NA,NA,NA,NA,"NCBITAXON:http://purl.bioontology.org/ontology/NCBITAXON/9606","Homo sapiens",NA,NA,NA,NA,NA,NA,NA,NA,NA

@@ -21,78 +21,93 @@ files <- list.files(path,recursive = T,full.names = T)
 
 # pmd related dataset
 # demo data from TBBPA https://pubs.acs.org/doi/abs/10.1021/acs.est.9b02122
-tbbpa <- enviGCMS::getmzrtcsv(files[2])
+tbbpa <- enviGCMS::getmzrtcsv(files[grepl('tbbpa',files)])
 # demo data from in vivo SPME https://www.sciencedirect.com/science/article/pii/S0003267018313047
-spme <- enviGCMS::getmzrtcsv(files[1])
+spme <- enviGCMS::getmzrtcsv(files[grepl('demomzrt',files)])
 
 path <- system.file("demodata/untarget", package = "rmwf")
 files <- list.files(path,recursive = T,full.names = T)
 
 # demo data from MTBLS28 https://www.ebi.ac.uk/metabolights/MTBLS28
-MTBLS28pos <- enviGCMS::getmzrtcsv(files[13])
-MTBLS28neg <- enviGCMS::getmzrtcsv(files[12])
+MTBLS28pos <- enviGCMS::getmzrtcsv(files[grepl('MTBLS28pos',files)])
+MTBLS28neg <- enviGCMS::getmzrtcsv(files[grepl('MTBLS28neg',files)])
 
 # demo data from MTBLS341 https://www.ebi.ac.uk/metabolights/MTBLS341
-MTBLS341exudatepos <- enviGCMS::getmzrtcsv(files[15])
-MTBLS341exudateneg <- enviGCMS::getmzrtcsv(files[14])
-MTBLS341leafpos <- enviGCMS::getmzrtcsv(files[16])
-MTBLS341leafneg <- enviGCMS::getmzrtcsv(files[17])
-MTBLS341rootpos <- enviGCMS::getmzrtcsv(files[19])
-MTBLS341rootneg <- enviGCMS::getmzrtcsv(files[18])
+MTBLS341exudatepos <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341exudatepos',files)])
+MTBLS341exudateneg <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341exudateneg',files)])
+MTBLS341leafpos <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341leafpos',files)])
+MTBLS341leafneg <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341leafneg',files)])
+MTBLS341rootpos <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341rootneg',files)])
+MTBLS341rootneg <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341rootneg',files)])
 
 # demo data from MTBLS59 https://www.ebi.ac.uk/metabolights/MTBLS59
-MTBLS59pos <- enviGCMS::getmzrtcsv(files[21])
-MTBLS59neg <- enviGCMS::getmzrtcsv(files[20])
+MTBLS59pos <- enviGCMS::getmzrtcsv(files[grepl('MTBLS59pos',files)])
+MTBLS59neg <- enviGCMS::getmzrtcsv(files[grepl('MTBLS59neg',files)])
 
 # demo data from ST000220 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000220
-DST000220 <- enviGCMS::getmzrtcsv(files[1])
-DST000220neg <- enviGCMS::getmzrtcsv(files[2])
+DST000220 <- enviGCMS::getmzrtcsv(files[grepl('DST000220',files)])
+DST000220neg <- enviGCMS::getmzrtcsv(files[grepl('DST000220neg',files)])
 
 # demo data from ST000388 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000388
-DST000388 <- enviGCMS::getmzrtcsv(files[3])
+DST000388 <- enviGCMS::getmzrtcsv(files[grepl('DST000388',files)])
 
 # demo data from ST000918 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000918
-DST000918pos <- enviGCMS::getmzrtcsv(files[5])
-DST000918neg <- enviGCMS::getmzrtcsv(files[4])
+DST000918pos <- enviGCMS::getmzrtcsv(files[grepl('DST000918pos',files)])
+DST000918neg <- enviGCMS::getmzrtcsv(files[grepl('DST000918neg',files)])
 
 # demo data from ST001120 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST001120
-DST001120pos <- enviGCMS::getmzrtcsv(files[7])
-DST001120neg <- enviGCMS::getmzrtcsv(files[6])
+DST001120pos <- enviGCMS::getmzrtcsv(files[grepl('DST001120pos',files)])
+DST001120neg <- enviGCMS::getmzrtcsv(files[grepl('DST001120mzrt',files)])
 
 # demo data from ST001168 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST001168
-DST001168pos <- enviGCMS::getmzrtcsv(files[9])
-DST001168neg <- enviGCMS::getmzrtcsv(files[8])
+DST001168pos <- enviGCMS::getmzrtcsv(files[grepl('DST001168pos',files)])
+DST001168neg <- enviGCMS::getmzrtcsv(files[grepl('DST001168neg',files)])
 
 # demo data from ST001169 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST001169
-DST001169pos <- enviGCMS::getmzrtcsv(files[11])
-DST001169neg <- enviGCMS::getmzrtcsv(files[10])
+DST001169pos <- enviGCMS::getmzrtcsv(files[grepl('DST001169pos',files)])
+DST001169neg <- enviGCMS::getmzrtcsv(files[grepl('DST001169neg',files)])
 
 # demo data from ST000560 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000560
-ST000560pos <- enviGCMS::getmzrtcsv(files[22])
-ST000560neg <- enviGCMS::getmzrtcsv(files[23])
+ST000560pos <- enviGCMS::getmzrtcsv(files[grepl('ST000560mzrt',files)])
+ST000560neg <- enviGCMS::getmzrtcsv(files[grepl('ST000560neg',files)])
 
 path <- system.file("demodata/target", package = "rmwf")
 files <- list.files(path,recursive = T,full.names = T)
 
 # Targeted data
 # demo data from MTBLS90 https://www.ebi.ac.uk/metabolights/MTBLS90
-MTBLS90 <- enviGCMS::getmzrtcsv(files[2])
-MTBLS90meta <- read.csv(files[1])
+MTBLS90 <- enviGCMS::getmzrtcsv(files[grepl('MTBLS90mzrt',files)])
+MTBLS90meta <- read.csv(files[grepl('MTBLS90meta',files)])
 
 # demo data from MTBLS92 https://www.ebi.ac.uk/metabolights/MTBLS92
-MTBLS92 <- enviGCMS::getmzrtcsv(files[4])
-MTBLS92meta <- read.csv(files[3])
+MTBLS92 <- enviGCMS::getmzrtcsv(files[grepl('MTBLS92mzrt',files)])
+MTBLS92meta <- read.csv(files[grepl('MTBLS92meta',files)])
 
 # demo data from ST001000 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST001000
-ST001000_AN001878 <- enviGCMS::getmzrtcsv(files[6])
-ST001000_AN001879 <- enviGCMS::getmzrtcsv(files[8])
-ST001000_AN001880 <- enviGCMS::getmzrtcsv(files[10])
-ST001000_AN001881 <- enviGCMS::getmzrtcsv(files[12])
+ST001000_AN001878 <- enviGCMS::getmzrtcsv(files[grepl('ST001000_AN001878mzrt',files)])
+ST001000_AN001879 <- enviGCMS::getmzrtcsv(files[grepl('ST001000_AN001879mzrt',files)])
+ST001000_AN001880 <- enviGCMS::getmzrtcsv(files[grepl('ST001000_AN001880mzrt',files)])
+ST001000_AN001881 <- enviGCMS::getmzrtcsv(files[grepl('ST001000_AN001881mzrt',files)])
 
-ST001000_AN001878meta <- read.csv(files[5])
-ST001000_AN001879meta <- read.csv(files[7])
-ST001000_AN001880meta <- read.csv(files[9])
-ST001000_AN001881meta <- read.csv(files[11])
+ST001000_AN001878meta <- read.csv(files[grepl('ST001000_AN001878meta',files)])
+ST001000_AN001879meta <- read.csv(files[grepl('ST001000_AN001879meta',files)])
+ST001000_AN001880meta <- read.csv(files[grepl('ST001000_AN001880meta',files)])
+ST001000_AN001881meta <- read.csv(files[grepl('ST001000_AN001881meta',files)])
+
+# demo data from MTBLS404 https://www.ebi.ac.uk/metabolights/MTBLS404
+MTBLS404 <- enviGCMS::getmzrtcsv(files[grepl('MTBLS404negmzrt',files)])
+MTBLS404meta <- read.csv(files[grepl('MTBLS404negmeta',files)])
+
+# demo data from MTBLS393 https://www.ebi.ac.uk/metabolights/MTBLS393
+MTBLS393 <- enviGCMS::getmzrtcsv(files[grepl('MTBLS393mzrt',files)])
+MTBLS393meta <- read.csv(files[grepl('MTBLS393meta',files)])
+
+# demo data from MTBLS351 https://www.ebi.ac.uk/metabolights/MTBLS351
+MTBLS351UPLC <- enviGCMS::getmzrtcsv(files[grepl('MTBLS351UPLCmzrt',files)])
+MTBLS351UPLCmeta <- read.csv(files[grepl('MTBLS351UPLCmeta',files)])
+MTBLS351GCxGC <- enviGCMS::getmzrtcsv(files[grepl('MTBLS351GCxGCmzrt',files)])
+MTBLS351GCxGCmeta <- read.csv(files[grepl('MTBLS351GCxGCmeta',files)])
+
 ```
 
 # Connetion with other online database
