@@ -86,3 +86,15 @@
 #'   \item{mass}{exact mass}
 #'   }
 "hr"
+
+#' A list containing HMDB GC-EI-MS spectra database
+#' @docType data
+#' @usage data(hmdbcms)
+#' @format A list with compounds from hmdb for GC-MS simulation
+"hmdbcms"
+
+#' A list containing MoNA LC-MS spectra database
+#' @docType data
+#' @usage data(monams1)
+#' @format A list with compounds from MoNA LC-MS spectra database for GC-MS simulation
+"monams1"
