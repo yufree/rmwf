@@ -82,7 +82,7 @@
 #'   \item{name}{compounds name}
 #'   \item{InChIKey}{InChIKey}
 #'   \item{chemical_formula}{chemical formula}
-#'   \item{dt}{database sources}
+#'   \item{db}{database sources}
 #'   \item{mass}{exact mass}
 #'   }
 "hr"
