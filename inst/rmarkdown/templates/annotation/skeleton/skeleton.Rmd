@@ -106,7 +106,32 @@ write.table(dataTable, "xcms_all.txt", sep = "\t", quote = FALSE,
             row.names = FALSE)
 ## upload here for GNPS FBMN
 ## https://gnps.ucsd.edu/ProteoSAFe/index.jsp?params=%7B%22workflow%22:%22FEATURE-BASED-MOLECULAR-NETWORKING%22,%22library_on_server%22:%22d.speclibs;%22%7D
+```
 
+### Generate MGF
+
+```{r}
+library(xcms)
+dda_data <- MSnbase::readMSData(ddafile, mode = "onDisk")
+cwp <- xcms::CentWaveParam(snthresh = 5, noise = 100, ppm = 10,
+                     peakwidth = c(3, 30))
+dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
+dda_spectra <- chromPeakSpectra(dda_data)
+mz <- precursorMz(dda_spectra)
+rt <- rtime(dda_spectra)
+files <- fromFile(dda_spectra)
+
+# check precursor ions
+ex_mz <- 97.97
+chromPeaks(dda_data, mz = ex_mz, ppm = 20)
+ex_id <- rownames(chromPeaks(dda_data, mz = ex_mz, ppm = 20))
+ex_spectra <- dda_spectra[mcols(dda_spectra)$peak_id %in% ex_id]
+ex_spectrum <- combineSpectra(ex_spectra, method = consensusSpectrum, mzd = 0,
+                              ppm = 20, minProp = 0.8, weighted = FALSE,
+                              intensityFun = median, mzFun = median)
+plot(ex_spectrum[[1]])
+# output mgf
+# MSnbase::writeMgfData(ex_spectrum,'dda.mgf')
 ```
 
 ## xMSannotator

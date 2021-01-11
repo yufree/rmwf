@@ -27,7 +27,7 @@ setwd(file.path('data'))
 # NIST1950 postive data
 dir.create(file.path('NIST1950'), showWarnings = FALSE)
 setwd(file.path('NIST1950'))
-article_id <- 11952558
+article_id <- 13252196
 details <- fs_details(article_id)
 name <- sapply(details$files,function(x) x$name)
 url <- sapply(details$files,function(x) x$download_url)
@@ -36,7 +36,7 @@ setwd('..')
 # matrix positive data
 dir.create(file.path('Matrix'), showWarnings = FALSE)
 setwd(file.path('Matrix'))
-article_id <- 11952561
+article_id <- 13252244
 details <- fs_details(article_id)
 name <- sapply(details$files,function(x) x$name)
 url <- sapply(details$files,function(x) x$download_url)
@@ -48,7 +48,6 @@ basename <- basename(path)
 group <- xcms:::phenoDataFromPaths(files)$class
 meta <- cbind.data.frame(name=basename,factor=group)
 ```
-
 
 ## XCMS
 
@@ -406,6 +405,16 @@ qcindex <- grepl('blank',mzrt$group$sample_group) | grepl('pool',mzrt$group$samp
 mzrtfilter <- enviGCMS::getfilter(mzrt,rowindex = index,colindex = !qcindex, name = 'lif', type = 'm')
 ```
 
+### Power analysis
+
+It's hard to estimate the sample size for certain metabolomics study when the effect size is different among features. In this case, we will perform power analysis on each feature considering FDR control with fixed power (0.8). Then the numbers for each peaks could be calculated. To retain the peaks with enough statistical power, the peak with sample numbers larger than the real group numbers would be removed. Such estimation could be done by enviGCMS package.
+
+```{r}
+x <- enviGCMS::getpower(mzrt)
+index <- x$n<=min(table(x$group$sample_group))
+sum(index)
+```
+
 ## Wrapgroup
 
 ```{r}
@@ -422,4 +431,27 @@ xr.l = bplapply(xset@filepaths, xcmsRaw, profstep=0)
 xs.warpgroup = group.warpgroup(xset, xr.l = xr.l, rt.max.drift = 20, ppm.max.drift = 3, rt.aligned.lim = 5,smooth.n = 5)
 saveRDS(xs.warpgroup,file = 'peak.RDS')
 saveRDS(xset,file = 'peakraw.RDS')
+```
+
+## Tips
+
+-   Convert XCMSnExp object into xcmsSet object
+
+```{r eval=F}
+xcmsSetdemo <- as(XCMSnExpdemo,'xcmsSet')
+```
+
+-   Split xcmsSet with multiple groups object into a list with single group object
+
+```{r eval=F}
+list <- split(xcmsSetdemo,xcmsSetdemo@phenoData$sample_group)
+# re-group the peaks with parallel computation
+list2 <- BiocParallel::bplapply(list,group)
+```
+
+-   Combine single group xcmsSet objects into one xcmsSet
+
+```{r eval=F}
+xcmsSetdemoagain <- Reduce('c',list2)
+# for more higher order function in R, check here: http://www.johnmyleswhite.com/notebook/2010/09/23/higher-order-functions-in-r/
 ```

@@ -22,13 +22,307 @@ library(rmwf)
 data("mzrt")
 ```
 
-# Normalization
+# Visualization
 
 ```{r ba}
-# visulize the batch effect
+# visualize the batch effect
 enviGCMS::plotrla(mzrt$data,lv = as.factor(mzrt$group$sample_group))
 enviGCMS::plotridges(mzrt$data,lv = factor(mzrt$group$sample_group))
-# get the simulation data and test on NOREVA
-sim <- mzrtsim::simmzrt(mzrt$data)
-mzrtsim::simdata(sim)
 ```
+
+## Correction
+
+### Functions
+
+Here is functions for 17 batch correction methods.
+
+```{r}
+# PMID: 16762068
+# None
+limmafit <- function(data, lv, batch = NULL,log=F){
+        if(log) data <- log(data+1)
+        mod <- stats::model.matrix(~lv)
+        mod0 <- as.matrix(rep(1,length(lv)))
+        datacor <- signal <- error <- pValues <-  qValues <- NULL
+        if(is.null(batch)){
+                batch <- NULL
+                # limma fit
+                lmfit <- limma::lmFit(data, mod)
+                signal <- lmfit$coef[, 1:nlevels(lv)] %*% t(mod[, 1:nlevels(lv)])
+                error <- data - signal
+                rownames(signal) <- rownames(error) <- rownames(data)
+                colnames(signal) <- colnames(error) <- colnames(data)
+                # find the peaks with significant differences by F test
+                # with BH correction for fdr control without correction
+                pValues = sva::f.pvalue(as.matrix(data), mod, mod0)
+                qValues = stats::p.adjust(pValues, method = "BH")
+        }else{
+                modcor <- cbind(mod,batch)
+                modcor0 <- cbind(mod0,batch)
+                lmfit <- limma::lmFit(data, modcor)
+                # data decomposition with batch
+                batch <- lmfit$coef[, (nlevels(lv) + 1):(nlevels(lv) + NCOL(batch))] %*% t(modcor[, (nlevels(lv) + 1):(nlevels(lv) + NCOL(batch))])
+                signal <- lmfit$coef[, 1:nlevels(lv)] %*% t(modcor[, 1:nlevels(lv)])
+                error <- data - signal - batch
+                datacor <- signal + error
+                rownames(datacor) <- rownames(batch) <- rownames(signal) <- rownames(error) <- rownames(data)
+                colnames(datacor) <- colnames(batch) <- colnames(signal) <- colnames(error) <- colnames(data)
+
+                # find the peaks with significant differences by F test
+                # with BH correction for fdr control
+                pValues = sva::f.pvalue(as.matrix(data), modcor, modcor0)
+                qValues = stats::p.adjust(pValues, method = "BH")
+        }
+        # get the results as list
+        li <- list(data, datacor, signal, batch, error, pValues, qValues)
+        names(li) <- c("data","dataCorrected","signal","batch", "error", "p-values", "q-values")
+        return(li)
+}
+
+# normalize to zero mean and unit variance
+
+AutoScaling <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        r <- rownames(data)
+        c <- colnames(data)
+        data2 <- t(apply(data, 1, function(x) (x - mean(x))/sd(x, na.rm=T)))
+        rownames(data2) <- r
+        colnames(data2) <- c
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# normalize to zero mean and squared root variance
+
+ParetoScaling <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        r <- rownames(data)
+        c <- colnames(data)
+        data2 <- t(apply(data, 1, function(x) (x - mean(x))/sqrt(sd(x, na.rm=T))))
+        rownames(data2) <- r
+        colnames(data2) <- c
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# normalize to zero mean but variance/SE
+
+RangeScaling <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        r <- rownames(data)
+        c <- colnames(data)
+        data2 <- t(apply(data, 1, function(x) (x - mean(x))/(max(x)-min(x))))
+        rownames(data2) <- r
+        colnames(data2) <- c
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# vast scaling
+
+VastScaling <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        r <- rownames(data)
+        c <- colnames(data)
+        data2 <- t(apply(data, 1, function(x) (x - mean(x))/sd(x, na.rm=T) * mean(x)/sd(x, na.rm=T)))
+        rownames(data2) <- r
+        colnames(data2) <- c
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# level scaling
+
+LevelScaling <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        r <- rownames(data)
+        c <- colnames(data)
+        data2 <- t(apply(data, 1, function(x) (x - mean(x))/mean(x)))
+        rownames(data2) <- r
+        colnames(data2) <- c
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# total sum row
+
+TotalSum <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        r <- rownames(data)
+        c <- colnames(data)
+        data2 <- apply(data, 2, function(x) x/sum(x, na.rm=T))
+        rownames(data2) <- r
+        colnames(data2) <- c
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# Median row
+
+MedianNorm <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        r <- rownames(data)
+        c <- colnames(data)
+        data2 <- apply(data, 2, function(x) x/median(x, na.rm=T))
+        rownames(data2) <- r
+        colnames(data2) <- c
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# Mean row
+
+MeanNorm <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        r <- rownames(data)
+        c <- colnames(data)
+        data2 <- apply(data, 2, function(x) x/mean(x, na.rm=T))
+        rownames(data2) <- r
+        colnames(data2) <- c
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# PQN
+
+PQNorm <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        r <- rownames(data)
+        c <- colnames(data)
+        ref <- apply(data[,lv == lv[1]],1,mean)
+        data2 <- apply(data, 2, function(x) x/median(as.numeric(x/ref), na.rm=T))
+        rownames(data2) <- r
+        colnames(data2) <- c
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# VSN
+
+VSNNorm <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        fit <- vsn::vsnMatrix(data)
+        data2 <- fit@hx
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# Quantile
+
+QuanNorm <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        data2 <- preprocessCore::normalize.quantiles(as.matrix(data), copy=FALSE)
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# lumi rsn
+
+LumiRobustSpline <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        data2 <- lumi::rsn(data)
+        li <- limmafit(data2,lv)
+        return(li)
+}
+
+# Limma CyclicLoess
+LimmaCyclicLoess <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        data2 <- limma::normalizeCyclicLoess(data)
+        li <- limmafit(data2,lv)
+        return(li)
+}
+# AFFA CUBICSpline
+LimmaCubicSpline <- function(data,lv,log=T){
+        if(log) data <- log(data+1)
+        data2 <- affy::normalize.qspline(data)
+        li <- limmafit(data2,lv)
+        return(li)
+}
+# SVA
+svacor <- function(data,lv,log=T) {
+        if(log) data <- log(data+1)
+        mod <- stats::model.matrix(~lv)
+        svafit <- sva::sva(data, mod)
+        if (svafit$n.sv == 0) {
+                message("No surrogate variable found")
+                li <- limmafit(data,lv)
+        } else {
+                message("Data is correcting ...")
+                batch <- svafit$sv
+                li <- limmafit(data,lv,batch)
+                message("Done!")
+        }
+        return(li)
+}
+# iSVA
+isvacor <- function(data, lv,log=T) {
+        if(log) data <- log(data+1)
+        isvafit <- try(isva::DoISVA(data, lv, factor.log = T),T)
+        if(class(isvafit) == 'try-error') {
+                li <- limmafit(data,lv)
+        }else{
+                if (isvafit$nsv == 0) {
+                        message("No surrogate variable found or error for computation.")
+                        li <- limmafit(data,lv)
+                } else {
+                        message("Data is correcting ...")
+                        batch <- isvafit$isv
+                        li <- limmafit(data,lv,batch)
+                        message("Done!")
+                }
+        }
+        return(li)
+}
+# PCR
+pcacor <- function(data, lv,log=T) {
+        if(log) data <- log(data+1)
+        batch <- svd(data - rowMeans(data))$v[,1]
+        message("Data is correcting ...")
+        li <- limmafit(data,lv,batch)
+        message("Done!")
+        return(li)
+}
+
+```
+
+### Correction
+
+```{r}
+re0 <- limmafit(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re1 <- AutoScaling(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re2 <- ParetoScaling(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re3 <- RangeScaling(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re4 <- VastScaling(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re5 <- LevelScaling(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re6 <- TotalSum(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re7 <- MedianNorm(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re8 <- MeanNorm(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re9 <- PQNorm(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re10 <- VSNNorm(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re11 <- QuanNorm(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re12 <- LumiRobustSpline(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re13 <- LimmaCyclicLoess(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re14 <- LimmaCubicSpline(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re15 <- try(svacor(as.matrix(mzrt$data),factor(mzrt$group$sample_group)),T)
+
+re16 <- isvacor(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+
+re17 <- pcacor(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
+```
+
