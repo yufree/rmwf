@@ -391,12 +391,13 @@ This chunk is used to generate peaks list and related csv, xcmsset object, xcmsE
 # path <- 'path/to/your/file'
 srm <- getrtmz(path)
 # back up the xcmsset object, xcmsEIC object and peak list
-mzrt <- enviGCMS::getmzrt(srm, name = 'srm', eic = T)
+mzrt <- enviGCMS::getmzrt(srm, name = 'rpp', eic = T)
+mzrtn <- enviGCMS::getmzrt(srm, name = 'rpn', eic = T)
 ```
 
 # Peaks filtering
 
-Peaks list could be processed by experimental design in thie chunk.
+Peaks list could be processed by experimental design in the chunk.
 
 ```{r pf}
 data(mzrt)
@@ -640,64 +641,7 @@ pt <- gettarget(pre$mz,pre$rt,n=6,Drt = 0.2,ce=20,name = 'pmd')
 rtn <- gettarget(rren$mz,rren$rt,n=6,Drt = 0.2,ce=20,name = 'ramclustrn')
 ctn <- gettarget(cren$mz,cren$rt,n=6,Drt = 0.2,ce=20,name = 'CAMERAn')
 ptn <- gettarget(pren$mz,pren$rt,n=6,Drt = 0.2,ce=20,name = 'pmdn')
-
-# remove wrong mode annotation and duplicated annotation
-posgnps <- read.csv('GNPS/posnodeanno.csv')
-neggnps <- read.csv('GNPS/negnodeanno.csv')
-
-library(eulerr)
-num <- as.numeric(table(posgnps$DefaultGroups))
-# 137
-names(num) <- c('DDA','DDA&Matrix','DDA&Matrix&PMDDA&CAMERA','DDA&Matrix&PMDDA&CAMERA&RAMClustR','DDA&Matrix&CAMERA','DDA&Matrix&CAMERA&RAMClustR','DDA&Matrix&RAMClustR','DDA&PMDDA','DDA&PMDDA&CAMERA','DDA&PMDDA&CAMERA&RAMClustR','DDA&PMDDA&RAMClustR','DDA&CAMERA','DDA&CAMERA&RAMClustR','DDA&RAMClustR','Matrix','Matrix&CAMERA&RAMClustR','PMDDA','PMDDA&CAMERA','PMDDA&CAMERA&RAMClustR','PMDDA&RAMClustR','CAMERA','CAMERA&RAMClustR','RAMClustR')
-
-sum(num[grepl('DDA',names(num))])
-# 104
-sum(num[grepl('Matrix',names(num))])
-# 19
-sum(num[grepl('PMDDA',names(num))])
-# 99
-sum(num[grepl('CAMERA',names(num))])
-# 66
-sum(num[grepl('RAMClustR',names(num))])
-# 81
-# 118 unique
-fit1 <- euler(num)
-png('comparepos.png',res=300,width = 2000,height = 2000)
-plot(fit1,quantities = TRUE,fills = list(fill = c("red", 'green','yellow',"steelblue4"), alpha = 0.5))
-dev.off()
-
-numn <- as.numeric(table(neggnps$DefaultGroups))
-# 73
-names(numn) <- c('Matrix','DDA&Matrix','DDA&Matrix&RAMClustR','DDA&Matrix&PMDDA&CAMERA&RAMClustR','DDA&Matrix&CAMERA&RAMClustR','DDA&Matrix&CAMERA','DDA','DDA&RAMClustR','DDA&PMDDA&RAMClustR','DDA&PMDDA&CAMERA&RAMClustR','DDA&PMDDA','DDA&CAMERA&PMDDA','DDA&CAMERA','RAMClustR','RAMClustR&PMDDA','PMDDA','PMDDA&CAMERA','CAMERA')
-sum(numn[grepl('DDA',names(num))])
-# 52
-sum(numn[grepl('Matrix',names(num))])
-# 18
-sum(numn[grepl('PMDDA',names(num))])
-# 41
-sum(numn[grepl('CAMERA',names(num))])
-# 25
-sum(numn[grepl('RAMClustR',names(num))])
-# 35
-# 55 unique
-fit2 <- euler(numn)
-png('compareneg.png',res=300,width = 2000,height = 2000)
-plot(fit2,quantities = TRUE)
-dev.off()
-df1 <- posgnps[,c(10:14)]
-df1[df1>0] <- 1
-colnames(df1) <- c('DDA','Matrix','PMDDA','CAMERA','RAMClustR')
-df2 <- neggnps[,c(13:18)]
-df2[df2>0] <- 1
-colnames(df2) <- c('Matrix','DDA','RAMClustR','PMDDA','CAMERA')
-df1 <- cbind.data.frame(df1,group = 'positive')
-df2 <- cbind.data.frame(df2[,c(2,1,4,5,3)],group = 'negative')
-df <- rbind.data.frame(df1,df2)
-df$group <- factor(df$group,levels = c('positive','negative'))
-fit <- euler(df,by=list(group))
-png('compare.png',res=300,width = 3000,height = 1500)
-plot(fit,quantities = TRUE,labels=NULL,legend = T)
-dev.off()
+# After collect MS/MS data, upload the mzXML files to GNPS for annotation
 ```
 
 ## Extract mgf files
@@ -730,6 +674,13 @@ cwp <- xcms::CentWaveParam(snthresh = 5, noise = 100, ppm = 10,
                      peakwidth = c(3, 30))
 dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
 dda_spectra <- chromPeakSpectra(dda_data)
+# compare with dda matrix
+dda_data <- MSnbase::readMSData(ddafilem, mode = "onDisk")
+cwp <- xcms::CentWaveParam(snthresh = 5, noise = 100, ppm = 10,
+                     peakwidth = c(3, 30))
+dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
+dda_spectram <- chromPeakSpectra(dda_data)
+
 # get mgf for each compounds
 data(mzrt)
 range <- cbind.data.frame(mzrt$mzrange,mzrt$rtrange)
