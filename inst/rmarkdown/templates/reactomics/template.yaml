@@ -1,0 +1,4 @@
+name: reactomics
+description: >
+   This is the Reactomics data analysis workflow.
+create_dir: FALSE

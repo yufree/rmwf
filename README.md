@@ -33,3 +33,6 @@ Other template could be used to check data analysis script.
 - statistical: statistical analysis methods
 
 - reporducible: get data from online database
+
+- reactomics: reactomics network analysis
+
