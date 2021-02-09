@@ -45,9 +45,39 @@ GlobalStd algorithm was originally designed to retrieve independent peaks by the
 
 Meanwhile, network analysis could be used for PMDDA workflow to select precursor ion for MS/MS annotation. Such precursor ions was selected by checking the peak with highest intensity of each independent peaks' high frequency PMD network cluster, which could be treated as pseudo spectra.
 
-# Reactomics Network Analysis
+# Extract high frequency PMDs
 
-The relation among those peaks could be checked in two ways: one from the correlation analysis and another from the PMD analysis. If we combined them together, reactomics network could be generated to capture the major reaction network within the samples. We will check them step by step.
+To retrieve the general chemical relationship, we will focus on high frequency PMDs within a certain metabolic profile. If one PMD occur multiple times among peaks from a snapshot of samples, certain reactions or bio-process should be important or occur multiple times compared with rarely PMD, which could be a random differences among compounds. In this case, extraction of high frequency PMDs will refine the investigation on a few active reactions instead of treating each peak individually, which is almost impossible for untargeted analysis.
+
+Such PMDs frequency analysis should be performed on the data set with the redundant peaks removal. Otherwise, the high frequency PMD among compounds will be immersed by PMD with from isotopes, adducts or other common PMDs from the backgrounds.
+
+You could define the cutoff of frequency while the default setting using the largest PMD network cluster numbers to determine the cutoff, which try to capture more information. Here we will retrieve high frequency PMDs from the demo data using a larger cutoff to reduce the complexity:
+
+```{r}
+hfp <- pmd::getsda(std,freqcutoff = 8)
+pmd::plotstdsda(hfp)
+```
+
+Here we could find 8 PMDs were selected as high frequency PMDs. PMD 0 Da could be some isomers, PMD 2.02 Da could be reduction reactions, etc. Some PMDs can be the combination of other PMDs, which could be a chain reactions. From the plot you might also identify the homologous series by the retention times relations.
+
+When you have the lists of high frequency PMDs, you could check the PMDs changes among groups. Here we will quantitatively analysis certain PMD to show the reaction level changes.
+
+```{r}
+# remove QC sample
+hfp2 <- enviGCMS::getfilter(hfp,colindex = !grepl('QC',qreact$group$sample_group))
+# check pmd 14.02
+qreact <- pmd::getreact(hfp2,pmd = 14.02)
+qreactsum <- apply(qreact$data,2,sum)
+t.test(qreactsum~qreact$group$sample_group)
+par(mfrow=c(1,1))
+boxplot(qreactsum~qreact$group$sample_group,xlab='',ylab = 'intensity', main='PMD 14.02Da')
+```
+
+Here we could find PMD 14.02Da could be a biomarker reaction for case and control. Meanwhile, paired relationship could be connected into network to show the overall relationship within the samples.
+
+# Reactomics network analysis
+
+The relation among those high frequency PMDs peaks could be further checked in two ways by network analysis: one from the correlation analysis and another from the PMD analysis. If we combined them together, reactomics network could be generated to capture the major reaction network within the samples. We will check them step by step.
 
 ## Build the correlation network
 
@@ -156,7 +186,7 @@ exogenous
 However, if one compound is shown in a network with average distance between 4 and the largest cluster, such compound should be carefully checked for medium reactivates in the sample, which might be linked to a higher toxicity.
 
 ```{r}
-# Suspcious compounds
+# Suspicious compounds
 idx2 <- which(netc$csize>3)
 li[setdiff(idx2,idx)]
 ```

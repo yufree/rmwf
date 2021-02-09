@@ -243,6 +243,16 @@ data("srmxset")
 plot(srmeic,srmxset,groupidx = 'M239.0911T229.4')
 # PCA
 enviGCMS::plotpca(data = mzrt$data,lv = mzrt$group$sample_group)
+# MDS
+library(MASS)
+d <- dist(t(mzrt$data)) # euclidean distances between the rows
+fit <- isoMDS(d, k=3) # k is the number of dim
+fit # view results
+x <- fit$points[,1]
+y <- fit$points[,2]
+plot(x, y, xlab="Coordinate 1", ylab="Coordinate 2",
+     main="Metric MDS", type="n")
+text(x, y, cex=.7) 
 
 # mzrt plot
 enviGCMS::plotmr(mzrt)
