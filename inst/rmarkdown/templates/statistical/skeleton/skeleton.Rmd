@@ -24,7 +24,7 @@ data("mzrt")
 
 ## Bottom-up analysis
 
-Bottom-up analysis mean the model for each metabolite. In this case, we could find out which metabolite will be affected by our experiment design. However, take care of multiple comparision issue.
+Bottom-up analysis mean the model for each metabolite. In this case, we could find out which metabolite will be affected by our experiment design. However, take care of multiple comparison issue.
 
 $$
 metabolite = f(control/treatment, co-variables)
@@ -37,7 +37,6 @@ Top-down analysis mean the model for output. In this case, we could evaluate the
 $$
 control/treatment = f(metabolite 1,metabolite 2,...,metaboliteN,co-varuables)
 $$
-
 
 ### Linear regression
 
@@ -89,7 +88,7 @@ result <- gwqs(Y~wqs,data = train,mix_name = colnames(train)[-1],q = 4,plots = T
 
 ### machine learning
 
-- test multiple models
+-   test multiple models
 
 ```{r sa}
 library(caret)
@@ -131,7 +130,7 @@ model_preds <- data.frame(model_preds)
 caTools::colAUC(model_preds, test$Y)
 ```
 
-- combine models
+-   combine models
 
 ```{r ensemble,eval=F}
 # ensemble model

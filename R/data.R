@@ -38,10 +38,10 @@
 #' @usage data(srmnxset)
 "srmnxset"
 
-#' A list containing HMDB qqq MS/MS data with peaks larger than 10 percentage for PMD annatation
+#' A list containing HMDB qqq MS/MS data with peaks larger than 10 percentage for PMD annotation
 #' @docType data
 #' @usage data(qqq)
-#' @format A list containing HMDB qqq MS/MS data with peaks larger than 10 percentage for PMD annatation
+#' @format A list containing HMDB qqq MS/MS data with peaks larger than 10 percentage for PMD annotation
 #' \describe{
 #'   \item{name}{HMDB ID}
 #'   \item{mz}{mass to charge ratio}
@@ -50,10 +50,10 @@
 #'   }
 "qqq"
 
-#' A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for PMD annatation
+#' A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for PMD annotation
 #' @docType data
 #' @usage data(qtof)
-#' @format A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for PMD annatation
+#' @format A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for PMD annotation
 #' \describe{
 #'   \item{name}{HMDB ID}
 #'   \item{mz}{mass to charge ratio}
@@ -62,10 +62,10 @@
 #'   }
 "qtof"
 
-#' A list containing HMDB orbitrap MS/MS data with peaks larger than 10 percentage for PMD annatation
+#' A list containing HMDB orbitrap MS/MS data with peaks larger than 10 percentage for PMD annotation
 #' @docType data
 #' @usage data(orb)
-#' @format A list containing HMDB orbitrap MS/MS data with peaks larger than 10 percentage for PMD annatation
+#' @format A list containing HMDB orbitrap MS/MS data with peaks larger than 10 percentage for PMD annotation
 #' \describe{
 #'   \item{name}{HMDB ID}
 #'   \item{mz}{mass to charge ratio}

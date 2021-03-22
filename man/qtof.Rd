@@ -3,9 +3,9 @@
 \docType{data}
 \name{qtof}
 \alias{qtof}
-\title{A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for PMD annatation}
+\title{A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for PMD annotation}
 \format{
-A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for PMD annatation
+A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for PMD annotation
 \describe{
   \item{name}{HMDB ID}
   \item{mz}{mass to charge ratio}
@@ -17,6 +17,6 @@ A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for 
 data(qtof)
 }
 \description{
-A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for PMD annatation
+A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for PMD annotation
 }
 \keyword{datasets}

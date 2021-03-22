@@ -452,7 +452,7 @@ sum(index <- indexmean&indexrsd)
 enviGCMS::getcsv(mzrtfiltern,'rpn')
 ```
 
-# PMDDA 
+# PMDDA
 
 ## Function for PMDDA
 

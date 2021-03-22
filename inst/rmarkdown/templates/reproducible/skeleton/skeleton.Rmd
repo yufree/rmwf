@@ -110,7 +110,7 @@ MTBLS351GCxGCmeta <- read.csv(files[grepl('MTBLS351GCxGCmeta',files)])
 
 ```
 
-# Connetion with other online database
+# Connection with other online database
 
 ## ISA for metabolights
 
@@ -201,4 +201,3 @@ download.file(url, name)
 path <- getwd()
 pmddafile <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
 ```
-

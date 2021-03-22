@@ -133,9 +133,9 @@ apply.sparse.class.comparison=FALSE, #perform variable selection in sPLS during 
 layout.type="fr1")
 ```
 
-# Canonical Correlation Analysis 
+# Canonical Correlation Analysis
 
-This analysis is used to compute correlation between two dataset. In this case, it's different omics dataset. Such analysis could connect two datasets by latent variable from Canonical Correlation Analysis.
+This analysis is used to compute correlation between two datasets. In this case, it's different omics dataset. Such analysis could connect two datasets by latent variable from Canonical Correlation Analysis.
 
 ```{r}
 # check here for details of CCA http://users.stat.umn.edu/~helwig/notes/cancor-Notes.pdf 
@@ -156,4 +156,3 @@ s1 %*% ca$xcoef
 s2 <- diag(sqrt(diag(cov(omics2))))
 s2 %*% ca$ycoef
 ```
-

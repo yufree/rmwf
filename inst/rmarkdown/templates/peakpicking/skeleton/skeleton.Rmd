@@ -136,7 +136,7 @@ getrtmz <- function(path,index = NULL){
 
 ### Autotuner
 
-Tutorial is [here](https://bioconductor.org/packages/release/bioc/vignettes/Autotuner/inst/doc/Autotuner.html). Here 5 NIST 1950 samples are used while ~5 pooled QC samples are suggested. The samples should contain peaks across all samples.
+Tutorial is [here](https://bioconductor.org/packages/release/bioc/vignettes/Autotuner/inst/doc/Autotuner.html). Here 5 NIST 1950 samples are used while \~5 pooled QC samples are suggested. The samples should contain peaks across all samples.
 
 ```{r}
 # BiocManager::install("Autotuner")
@@ -207,7 +207,6 @@ library(apLCMS)
 aligned<-cdf.to.ftr(path, file.pattern=".mzML", n.nodes=4, min.exp=5,min.run=12,min.pres=1)
 ft <- aligned$final.ftrs
 ```
-
 
 ## Peaks list
 
@@ -289,7 +288,7 @@ enviGCMS::plotrla(mzrt$data,lv = as.factor(mzrt$group$sample_group))
 enviGCMS::plotridges(mzrt$data,lv = factor(mzrt$group$sample_group))
 ```
 
-### Visulization for xcms 3 
+### Visulization for xcms 3
 
 ```{r}
 # data visualization for xcms 3 object
