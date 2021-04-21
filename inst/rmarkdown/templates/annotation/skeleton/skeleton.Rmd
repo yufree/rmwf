@@ -105,7 +105,7 @@ dataTable <- dataTable[, !(colnames(dataTable) %in% c("peakidx"))]
 write.table(dataTable, "xcms_all.txt", sep = "\t", quote = FALSE,
             row.names = FALSE)
 ## upload here for GNPS FBMN
-## https://gnps.ucsd.edu/ProteoSAFe/index.jsp?params=%7B%22workflow%22:%22FEATURE-BASED-MOLECULAR-NETWORKING%22,%22library_on_server%22:%22d.speclibs;%22%7D
+## https://gnps.ucsd.edu
 ```
 
 ### Generate MGF

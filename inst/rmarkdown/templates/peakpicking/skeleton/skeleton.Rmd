@@ -288,7 +288,7 @@ enviGCMS::plotrla(mzrt$data,lv = as.factor(mzrt$group$sample_group))
 enviGCMS::plotridges(mzrt$data,lv = factor(mzrt$group$sample_group))
 ```
 
-### Visulization for xcms 3
+### Visualization for xcms 3
 
 ```{r}
 # data visualization for xcms 3 object
