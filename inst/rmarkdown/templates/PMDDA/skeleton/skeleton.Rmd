@@ -74,7 +74,7 @@ This chunk should run first to generate XCMS parameters for peak picking, retent
 
 This chunk will generate 'para.RData'(positive) to save the optimized parameters for xcms peak picking. For the usage of IPO package, check [here](https://www.bioconductor.org/packages/release/bioc/html/IPO.html) for technique details. Then read the comments in the following code chunk carefully to fit the work flow to your own data.
 
-```{r IPOpos,eval=FALSE}
+```{r IPOpos}
 library(IPO)
 library(xcms)
 peakpickingParameters <- getDefaultXcmsSetStartingParams('centWave')
@@ -105,7 +105,7 @@ saveRDS(para,file = 'para.RDS')
 
 This chunk could be run after you have `para.RData` from last chunk. We also include pre-optimized IPO parameters for a quick check. Here we use xcms 3 for peak picking and check [here](https://www.bioconductor.org/packages/release/bioc/html/xcms.html) for the technique details of their parameters. Read the comments in the following code chunk carefully to fit the work flow to your own data.
 
-```{r eval=FALSE}
+```{r}
 library(xcms)
 # here we use pre-optimized IPO parameters for positive mode data
 data('para')
@@ -167,7 +167,7 @@ getrtmz <- function(path,index = NULL){
 
 This chunk is used to generate peaks list related csv/objects files for further analysis.
 
-```{r eval=F}
+```{r}
 # use your own data by changing the path in the following line
 # Positive mode
 path <- 'data/'
