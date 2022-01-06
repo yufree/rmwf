@@ -1,5 +1,5 @@
 ---
-title: "PMDDA Meta-Workflow"
+title: "PMDDA Workflow"
 author: "Miao Yu"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -11,60 +11,54 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,cache = T,message=T,warning=F)
-library(rmwf)
-sessionInfo()
 ```
+
+This workflow is the same with PMDDA on [GitHub](https://github.com/yufree/pmdda). However, we have found the peak picking results will change due to different software version. Since xcmsrocker will always use the most updated software, the results might change. If you prefer to reproduce the paper results, please use the GitHub repo. Here is the template for PMDDA workflow and will not include comparison with other software. The demo data only use positive mode NIST samples and matrix sample and this workflow will include the following steps:
+
+- MS1 full scan peak-picking.
+- GlobalStd algorithm to select precursor ions for MS2 from MS1 data.
+- Collect the MS2 data and annotation with GNPS.
 
 # Demo data
 
-Five SRM 1950 samples and five matrix blank samples were used as demo data. Check [here](https://figshare.com/projects/Reproducilble_Metabolomics_WorkFlow/59777) if you can't download the data by the following code successfully.
+Five SRM 1950 samples and five matrix blank samples were used as demo data in positive mode. Check [here](https://figshare.com/projects/Reproducilble_Metabolomics_WorkFlow/59777) if you can't download the data by the following code successfully.
 
 ```{r download}
 options(timeout=600)
-# Download demo data from figshare
+# Download data using rfigshare package
 library(rfigshare)
+# create data folder for MS1 positive data
 dir.create(file.path('data'), showWarnings = FALSE)
 setwd(file.path('data'))
 
-# NIST1950 postive data
-dir.create(file.path('NIST1950'), showWarnings = FALSE)
-setwd(file.path('NIST1950'))
+# download NIST1950 MS1 positive data into nist1950 folder
+dir.create(file.path('nist1950'), showWarnings = FALSE)
+setwd(file.path('nist1950'))
 article_id <- 13252196
-details <- fs_details(article_id)
+details <- fs_details(article_id, mine = FALSE, session = NULL)
 name <- sapply(details$files,function(x) x$name)
 url <- sapply(details$files,function(x) x$download_url)
-download.file(url, name)
+download.file(url, name, method = 'libcurl')
 
-# matrix positive data
+# download matrix MS1 positive data into matrix folder
 setwd('..')
-dir.create(file.path('Matrix'), showWarnings = FALSE)
-setwd(file.path('Matrix'))
+dir.create(file.path('matrix'), showWarnings = FALSE)
+setwd(file.path('matrix'))
 article_id <- 13252244
-details <- fs_details(article_id)
+details <- fs_details(article_id, mine = FALSE, session = NULL)
 name <- sapply(details$files,function(x) x$name)
 url <- sapply(details$files,function(x) x$download_url)
-download.file(url, name)
+download.file(url, name, method = 'libcurl')
 setwd('..')
 path <- getwd()
+# get the files name of positive MS1 data
 files <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
-setwd('..')
-
-# PMDDA positive data
-dir.create(file.path('PMDDA'), showWarnings = FALSE)
-setwd(file.path('PMDDA'))
-article_id <- 13253942
-details <- fs_details(article_id)
-name <- sapply(details$files,function(x) x$name)
-url <- sapply(details$files,function(x) x$download_url)
-download.file(url, name)
-path <- getwd()
-pmddafile <- list.files(path,pattern = '*.mzXML',recursive = T,full.names = T)
 setwd('..')
 ```
 
-The data could be subset by msconvert to avoid peaks with low quality(co-elution and column washing phase). You need to install docker and pull the docker image from msconvert.
+The data could be subset by [msconvert](https://proteowizard.sourceforge.io/tools.shtml) to avoid peaks with low quality(co-elution and column washing phase). You need to install [docker](https://www.docker.com/) and pull the docker image from msconvert.The following code will subset the data by retention time from 30 to 930s. More details can be found [online](https://proteowizard.sourceforge.io/tools/msconvert.html).
 
-```{bash eval=F}
+```{bash eval=FALSE}
 docker pull chambm/pwiz-skyline-i-agree-to-the-vendor-licenses
 for f in $(basename path/*.mzML)
 do
@@ -74,15 +68,17 @@ done
 
 # Optimization of XCMS
 
-This chunk should run first to generate XCMS parameters. We suggest a computer with large memory to run this chunk for IPO package.
+This chunk should run first to generate XCMS parameters for peak picking, retention time correction, and featuer generation. We suggest a computer with large memory to run this chunk for IPO package.
 
 ## IPO
+
+This chunk will generate 'para.RData'(positive) to save the optimized parameters for xcms peak picking. For the usage of IPO package, check [here](https://www.bioconductor.org/packages/release/bioc/html/IPO.html) for technique details. Then read the comments in the following code chunk carefully to fit the work flow to your own data.
 
 ```{r IPOpos,eval=FALSE}
 library(IPO)
 library(xcms)
 peakpickingParameters <- getDefaultXcmsSetStartingParams('centWave')
-# Uncomment this line to use your own data(suggested 3-5 pooled QC samples)
+# Uncomment the following line to use your own data(suggested 3-5 pooled QC samples)
 # path <- 'path/to/your/files'
 # change to 5 for obitrap
 peakpickingParameters$ppm <- 10
@@ -102,44 +98,19 @@ resultRetcorGroup <-
                    subdir = NULL)
 para <- c(resultPeakpicking$best_settings$parameters, 
           resultRetcorGroup$best_settings)
-save(para,file = 'para.RData')
-# for negative mode
-library(IPO)
-library(xcms)
-peakpickingParameters <- getDefaultXcmsSetStartingParams('centWave')
-# Uncomment this line to use your own data(suggested 3-5 pooled QC samples)
-# path <- 'path/to/your/files'
-# change to 5 for obitrap
-peakpickingParameters$ppm <- 10
-resultPeakpicking <- 
-  optimizeXcmsSet(files = filesn[c(6,8,10)], 
-                  params = peakpickingParameters,
-                  plot = F,
-                  subdir = NULL)
-
-optimizedXcmsSetObject <- resultPeakpicking$best_settings$xset
-retcorGroupParameters <- getDefaultRetGroupStartingParams()
-retcorGroupParameters$minfrac <- 1
-resultRetcorGroup <-
-  optimizeRetGroup(xset = optimizedXcmsSetObject, 
-                   params = retcorGroupParameters, 
-                   plot = F,
-                   subdir = NULL)
-para <- c(resultPeakpicking$best_settings$parameters, 
-          resultRetcorGroup$best_settings)
-save(para,file = 'paran.RData')
+saveRDS(para,file = 'para.RDS')
 ```
 
 ## Wrap function for peak picking
 
-This chunk could be run after you have `para.RData` from last chunk.
+This chunk could be run after you have `para.RData` from last chunk. We also include pre-optimized IPO parameters for a quick check. Here we use xcms 3 for peak picking and check [here](https://www.bioconductor.org/packages/release/bioc/html/xcms.html) for the technique details of their parameters. Read the comments in the following code chunk carefully to fit the work flow to your own data.
 
 ```{r eval=FALSE}
 library(xcms)
-# here we use pre-optimized IPO parameters
+# here we use pre-optimized IPO parameters for positive mode data
 data('para')
-# Or you could load your own set from last chunk
-load('para.RData')
+# Or you could load your own set from last chunk by uncomment the following code
+# para <- readRDS('para.RDS')
 getrtmz <- function(path,index = NULL){
   files <- list.files(path,pattern = ".CDF|.mzXML|.mzML",full.names = T,recursive = T)
   if(!is.null(index)){
@@ -157,8 +128,6 @@ getrtmz <- function(path,index = NULL){
   
   raw_data <- readMSData(files = files, pdata = new("NAnnotatedDataFrame", pd),
                        mode = "onDisk")
-  # remove co-elution and column wash phase
-  # filter_data <- filterRt(raw_data,rt = c(100,900))
   cwp <- CentWaveParam(peakwidth = c(para$min_peakwidth,para$max_peakwidth), 
                        ppm             = para$ppm,
                        noise           = para$noise,
@@ -169,63 +138,7 @@ getrtmz <- function(path,index = NULL){
                        integrate       = para$integrate,
                        fitgauss        = para$fitgauss,
                        verboseColumns  = para$verbose.columns)
-  owp <- ObiwarpParam(binSize        = para$profStep,
-                      centerSample   = para$center,
-                      response       = para$response,
-                      distFun        = para$distFunc,
-                      gapInit        = para$gapInit,
-                      gapExtend      = para$gapExtend,
-                      factorDiag     = para$factorDiag,
-                      factorGap      = para$factorGap,
-                      localAlignment = ifelse(para$localAlignment==0,F,T))
-  pdp <- PeakDensityParam(sampleGroups = pd$sample_group,
-                        bw      = para$bw,
-                        minFraction = para$minfrac,
-                        minSamples = para$minsamp,
-                        maxFeatures = para$max,
-                        binSize = para$mzwid)
-
-  xdata <- findChromPeaks(raw_data, param = cwp)
-  # xdata <- findChromPeaks(filter_data, param = cwp)
-  xdata <- adjustRtime(xdata, param = owp)
-  xdata <- groupChromPeaks(xdata, param = pdp)
-  xdata <- fillChromPeaks(xdata)
-  return(xdata)
-}
-
-# here we use pre-optimized IPO parameters
-data('paran')
-# Or you could load your own set from last chunk
-load('paran.RData')
-getrtmzn <- function(path,index = NULL){
-  files <- list.files(path,pattern = ".CDF|.mzXML|.mzML",full.names = T,recursive = T)
-  if(!is.null(index)){
-    files<- files[index]
-    }
-  group <- xcms:::phenoDataFromPaths(files)
-  if(NCOL(group)==1){
-      sample_group <- group$class
-  }else{
-      cols <- colnames(group)
-      sample_group <-  do.call(paste,c(group[cols],sep='_'))
-  }
-  sample_name=sub(basename(files),pattern = ".CDF|.mzXML|.mzML",replacement = '')
-  pd <- cbind.data.frame(sample_name, sample_group)
-  
-  raw_data <- readMSData(files = files, pdata = new("NAnnotatedDataFrame", pd),
-                       mode = "onDisk")
-  # remove co-elution and column wash phase
-  # filter_data <- filterRt(raw_data,rt = c(100,900))
-  cwp <- CentWaveParam(peakwidth = c(para$min_peakwidth,para$max_peakwidth), 
-                       ppm             = para$ppm,
-                       noise           = para$noise,
-                       snthresh        = para$snthresh,
-                       mzdiff          = para$mzdiff,
-                       prefilter       = c(para$prefilter,para$value_of_prefilter),
-                       mzCenterFun     = para$mzCenterFun,
-                       integrate       = para$integrate,
-                       fitgauss        = para$fitgauss,
-                       verboseColumns  = para$verbose.columns)
+  # centerSample should be a pooled QC sample and avoid blank samples. For demo data, we use 6
   owp <- ObiwarpParam(binSize        = para$profStep,
                       centerSample   = 6,
                       response       = para$response,
@@ -241,9 +154,8 @@ getrtmzn <- function(path,index = NULL){
                         minSamples = para$minsamp,
                         maxFeatures = para$max,
                         binSize = para$mzwid)
-
+  MSnbase::setMSnbaseFastLoad(FALSE)
   xdata <- findChromPeaks(raw_data, param = cwp)
-  # xdata <- findChromPeaks(filter_data, param = cwp)
   xdata <- adjustRtime(xdata, param = owp)
   xdata <- groupChromPeaks(xdata, param = pdp)
   xdata <- fillChromPeaks(xdata)
@@ -253,23 +165,27 @@ getrtmzn <- function(path,index = NULL){
 
 # Peaks list
 
-This chunk is used to generate peaks list and related csv, xcmsset object, xcmsEIC object for further analysis.
+This chunk is used to generate peaks list related csv/objects files for further analysis.
 
 ```{r eval=F}
-# use your own data
-# path <- 'path/to/your/file'
+# use your own data by changing the path in the following line
+# Positive mode
+path <- 'data/'
 srm <- getrtmz(path)
-# back up the xcmsset object, xcmsEIC object and peak list
-mzrt <- enviGCMS::getmzrt(srm, name = 'rpp', eic = T)
+# back up peak list as csv file and xcmsSet object
+mzrt <- enviGCMS::getmzrt(srm, name = 'srm')
 ```
 
 # Peaks filtering
 
-Peaks list could be processed by experimental design in the chunk.
+This chunk will use peak list csv file as input to perform peak filtering based on matrix sample and RSD% cutoff.
+
+This chunk will save the filtered peaks list as `rppmzrt.csv` for positive mode.
 
 ```{r pf}
-data(mzrt)
-# get the mean and rsd for each group
+# Positive data
+mzrt <- enviGCMS::getmzrtcsv('srmmzrt.csv')
+# calculate group mean and rsd%
 mzrtm <- enviGCMS::getdoe(mzrt)
 gm <- mzrtm$groupmean
 gr <- mzrtm$grouprsd
@@ -283,22 +199,25 @@ sum(indexmean <- apply(gm,1,function(x) all(x[srm]> 3*x[blk])))
 # filter by pool qc rsd%, return numbers and index
 # select rsd% cutoff 30
 rsdcf <- 30
-# 5952
 sum(indexrsd <- apply(gr,1,function(x) ifelse(is.na(x[srm]),T,x[srm]<rsdcf)))
 # overlap with rsd% and mean filter
 sum(index <- indexmean&indexrsd)
-# 4705
-# new list, update group and remove pool qc/blk and save the new csv file
 qcindex <- grepl('matrix',mzrt$group$sample_group)
-mzrtfilter <- enviGCMS::getfilter(mzrt,rowindex = index,colindex = !qcindex)
+mzrtfilter <- enviGCMS::getfilter(mzrt,rowindex = index)
+# save the filtered peak list
 enviGCMS::getcsv(mzrtfilter,'rpp')
 ```
 
-# PMDDA
+# PMDDA precursor selection
+
+This section will select the precursor ions from MS1 full scan data for MS2 spectra data collection.
 
 ## Function for PMDDA
 
+Those functions are designed for multiple injections. Please read the purpose of each function in the comments and do not change the function unless you know what you are doing.
+
 ```{r}
+# pmdtarget is used to generate precursor ions list for targeted analysis
 pmdtarget <- function(list,Dppm = 20,Drt = 0.5,ce = NA, name = 'target',n=NULL){
         head <-  c('On', 'Prec. m/z', 'Z','Ret. Time (min)', 'Delta Ret. Time (min)', 'Iso. Width', 'Collision Energy')
         mz <- list$mz[list$stdmassindex]
@@ -324,7 +243,7 @@ pmdtarget <- function(list,Dppm = 20,Drt = 0.5,ce = NA, name = 'target',n=NULL){
 
         return(data)
 }
-
+# gettarget is used to generate list for targeted analysis
 gettarget <- function(mz,rt,Drt=0.5,Dppm=20,ce=NA,name,n=NULL){
   head <-  c('On', 'Prec. m/z', 'Z','Ret. Time (min)', 'Delta Ret. Time (min)', 'Iso. Width', 'Collision Energy')
         rtn <- round(rt/60,3)
@@ -349,7 +268,7 @@ gettarget <- function(mz,rt,Drt=0.5,Dppm=20,ce=NA,name,n=NULL){
 
         return(data)
 }
-
+# targetsep is used to split peaks list base on retention time, retention time range and the max scans per second (n).
 targetsep <- function(rt,Drt,n=6,seed=42){
         set.seed(seed)
         D <- Drt*60
@@ -376,158 +295,26 @@ targetsep <- function(rt,Drt,n=6,seed=42){
 }
 ```
 
-## Generate MS/MS peaks list
+## Generate precursor ions peaks list
 
 Generate targeted list for MS/MS analysis from pmd analysis
 
 ```{r}
 # PMD
 pos <- enviGCMS::getmzrtcsv('rppmzrt.csv')
+# perform GlobalStd algorithm
 pospmd <- pmd::globalstd(pos,sda=F,ng = NULL)
-# 849
 pospmd2 <- pmd::getcluster(pospmd,corcutoff = 0.9)
-sum(pospmd2$stdmassindex2)
-# 780
+# generate the targeted ions list
 pre <- cbind.data.frame(mz=pospmd2$mz[pospmd2$stdmassindex2],rt=pospmd2$rt[pospmd2$stdmassindex2])
 write.csv(pre,'pretar.csv')
 pre <- read.csv('pretar.csv')
-
-negpmd <- pmd::globalstd(neg,sda=F,ng = NULL)
-# 761
-negpmd2 <- pmd::getcluster(negpmd,corcutoff = 0.9)
-sum(negpmd2$stdmassindex2)
-# 723
 # generate the precursor ions list for multiple injections
 pt <- gettarget(pre$mz,pre$rt,n=6,Drt = 0.2,ce=20,name = 'pmd')
 # After collect MS/MS data, upload the mzXML files to GNPS for annotation
 ```
 
-## Extract mgf files and linked MS1 peaks
-
-```{r eval=F}
-# run the first download chunk to get the files path
-library(xcms)
-dda_data <- MSnbase::readMSData(pmddafile, mode = "onDisk")
-cwp <- xcms::CentWaveParam(noise = 0, ppm = 10,
-                     peakwidth = c(9, 90))
-dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
-dda_spectra <- xcms::chromPeakSpectra(dda_data)
-# extract precursor ions
-mz <- precursorMz(dda_spectra)
-rt <- rtime(dda_spectra)
-# align to MS1
-idx <- enviGCMS::getalign(mz,mzrt$mz,rt,mzrt$rt,ppm = 5,deltart = 5)
-idx$grp <- paste0('M',round(idx$mz2,4),'T',round(idx$rt2,1))
-x <- dda_spectra[idx$xid]
-message(paste(length(unique(idx$grp)),'spectra could be found'))
-idx2 <- enviGCMS::getalign(mzrt$mz,mz,mzrt$rt,rt,ppm = 5,deltart = 5)
-dda <- enviGCMS::getfilter(mzrt,rowindex = unique(idx2$xid))
-x@elementMetadata$peak_id <- idx$grp
-# combine spectrum from the same precursor
-spec <- combineSpectra(x, fcol="peak_id", method = consensusSpectrum, mzd = 0.2,ppm = 5, minProp = 0.5, weighted = FALSE,intensityFun = sum, mzFun = median)
-scan <- sapply(spec,function(x) x@acquisitionNum)
-spec@elementMetadata$peak_id <- paste0('FT',scan)
-# save the mgf
-writeMgfData(spec,'PMDDAlink.mgf')
-# generate featuer table from MS1
-Row.names <- paste0('FT',scan)[match(rownames(dda$data),unique(idx$grp))]
-mzmed <- dda$mz
-rtmed <- dda$rt
-df <- cbind(Row.names,mzmed,rtmed,dda$data)
-write.table(df,'PMDDAlink.txt',sep = '\t',row.names = F)
-# save the linked MS1
-enviGCMS::getcsv(dda,'PMDDAlink')
-## upload here for FBMN
-## https://gnps.ucsd.edu/
-```
-
-# PosNeg
-
 ```{r}
-data("mzrt")
-data("mzrtn")
-con <- pmd::getposneg(mzrt,mzrtn)
-
-concor <- con[abs(con$diffrt)<10&abs(con$cor)>0.6,]
-write.csv(concor,'posneg.csv')
-concor <- read.csv('posneg.csv')
-# 100
-# annotation by PMDDA & GNPS
-# anno <- read.csv('GNPS/posnegnodeanno.csv')
-# 37
-
-plot(concor$pos~concor[,3], main = 'RPP&RPN',xlab='Retention time(s)',ylab = 'm/z',col='blue')
-points(concor$neg~concor[,5],col='red')
-points(anno$parent.mass~anno$RTMean,pch=19)
-
-plot(con$pos~con[,2],pch=19, main = 'RPP',xlab='Retention time(s)',ylab = 'm/z')
-plot(con$neg~con[,4],pch=19, main = 'RPN',xlab='Retention time(s)',ylab = 'm/z')
-# generate target list
-ppn <- gettarget(concor$pos,concor$rt,n=6,Drt = 0.2,ce=20,name = 'posnegp')
-npn <- gettarget(concor$neg,concor$rt,n=6,Drt = 0.2,ce=20,name = 'posnegn')
+sessionInfo()
 ```
 
-# Formula assign
-
-```{r}
-data(mzrt)
-library(Rdisop)
-# isotop group formula assign
-p1 <- pmd::getpaired(mzrt)
-pi <- enviGCMS::getfilter(mzrt,rowindex = p1$isoindex)
-rtg <- p1$rtcluster[p1$isoindex]
-iso <- p1$iso
-formula <- list()
-for (i in 1:length(unique(iso$rtg))){
-  isoi <- iso[iso$rtg == unique(iso$rtg)[i],]
-  insi <- rowSums(pi$data[rtg==unique(iso$rtg)[i],],na.rm = T)
-  mzi <- round(pi$mz[rtg==unique(iso$rtg)[i]],4) 
-  net <- igraph::graph_from_data_frame(isoi,directed = F)
-  group <- igraph::groups(igraph::components(net))
-  groupi <- list()
-  for (j in 1:length(group)) {
-    mz <- round(as.numeric(group[[j]]),4)
-    inst <- insi[mzi%in%mz]
-    molecules <- decomposeIsotopes(masses = mz, intensities = inst,elements = initializeElements(c("C","H","N","O","P")))
-    if(!is.null(molecules)){
-      Formula <- getFormula(molecules)
-      Formulav <- Formula[getValid(molecules)=='Valid']
-      groupi[[j]] <- Formulav
-    }
-  }
-  formula[[i]] <- groupi
-}
-
-# mass formula assign
-p2 <- pmd::getstd(p1)
-mass <- p2$mz[p2$stdmassindex]
-massf <- list()
-for(i in 1:sum(p2$stdmassindex)){
-  molecules <- decomposeMass(mass = mass[i],elements = initializeElements(c("C","H","N","O","P")))
-  if(!is.null(molecules)){
-      Formula <- getFormula(molecules)
-      Formulav <- Formula[getValid(molecules)=='Valid']
-      massf[[i]] <- Formulav
-    }
-}
-```
-
-# MS/MS Local Annotation
-
-Use HMDB MS/MS database to annotate compounds.
-
-```{r}
-data("qtof")
-# this is the sepctra of HMDB0034004
-file <- system.file("extdata", "challenge-msms.mgf", package = "rmwf")
-# dot product similarity
-anno1 <- enviGCMS::dotpanno(file,db = qtof)
-unique(anno1$name)
-# X rank algorithm
-anno2 <- enviGCMS::xrankanno(file,db = qtof)
-unique(anno2$name)
-# pmd msms annotation
-anno3 <- pmd::pmdanno(file,db=qtof)
-unique(anno3$name)
-enviGCMS::plotanno(anno3)
-```

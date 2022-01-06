@@ -158,6 +158,51 @@ xMSannotator::multilevelannotation(
 )
 ```
 
+## Formula assign
+
+```{r}
+data(mzrt)
+library(Rdisop)
+# isotop group formula assign
+p1 <- pmd::getpaired(mzrt)
+pi <- enviGCMS::getfilter(mzrt,rowindex = p1$isoindex)
+rtg <- p1$rtcluster[p1$isoindex]
+iso <- p1$iso
+formula <- list()
+for (i in 1:length(unique(iso$rtg))){
+  isoi <- iso[iso$rtg == unique(iso$rtg)[i],]
+  insi <- rowSums(pi$data[rtg==unique(iso$rtg)[i],],na.rm = T)
+  mzi <- round(pi$mz[rtg==unique(iso$rtg)[i]],4) 
+  net <- igraph::graph_from_data_frame(isoi,directed = F)
+  group <- igraph::groups(igraph::components(net))
+  groupi <- list()
+  for (j in 1:length(group)) {
+    mz <- round(as.numeric(group[[j]]),4)
+    inst <- insi[mzi%in%mz]
+    molecules <- decomposeIsotopes(masses = mz, intensities = inst,elements = initializeElements(c("C","H","N","O","P")))
+    if(!is.null(molecules)){
+      Formula <- getFormula(molecules)
+      Formulav <- Formula[getValid(molecules)=='Valid']
+      groupi[[j]] <- Formulav
+    }
+  }
+  formula[[i]] <- groupi
+}
+
+# mass formula assign
+p2 <- pmd::getstd(p1)
+mass <- p2$mz[p2$stdmassindex]
+massf <- list()
+for(i in 1:sum(p2$stdmassindex)){
+  molecules <- decomposeMass(mass = mass[i],elements = initializeElements(c("C","H","N","O","P")))
+  if(!is.null(molecules)){
+      Formula <- getFormula(molecules)
+      Formulav <- Formula[getValid(molecules)=='Valid']
+      massf[[i]] <- Formulav
+    }
+}
+```
+
 ## Rdisop
 
 ```{r eval=FALSE}
@@ -288,6 +333,45 @@ mb <- loadInfolist(mb,system.file("infolists/PlantDataset.csv",
 ## Step
 mb <- mbWorkflow(mb, steps=1:8)
 
+```
+
+## Extract mgf files and linked MS1 peaks (optional)
+
+```{r eval=F}
+# run the first download chunk to get the files path
+library(xcms)
+dda_data <- MSnbase::readMSData(pmddafile, mode = "onDisk")
+cwp <- xcms::CentWaveParam(noise = 0, ppm = 10,
+                     peakwidth = c(9, 90))
+dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
+dda_spectra <- xcms::chromPeakSpectra(dda_data)
+# extract precursor ions
+mz <- precursorMz(dda_spectra)
+rt <- rtime(dda_spectra)
+# align to MS1
+idx <- enviGCMS::getalign(mz,mzrt$mz,rt,mzrt$rt,ppm = 5,deltart = 5)
+idx$grp <- paste0('M',round(idx$mz2,4),'T',round(idx$rt2,1))
+x <- dda_spectra[idx$xid]
+message(paste(length(unique(idx$grp)),'spectra could be found'))
+idx2 <- enviGCMS::getalign(mzrt$mz,mz,mzrt$rt,rt,ppm = 5,deltart = 5)
+dda <- enviGCMS::getfilter(mzrt,rowindex = unique(idx2$xid))
+x@elementMetadata$peak_id <- idx$grp
+# combine spectrum from the same precursor
+spec <- combineSpectra(x, fcol="peak_id", method = consensusSpectrum, mzd = 0.2,ppm = 5, minProp = 0.5, weighted = FALSE,intensityFun = sum, mzFun = median)
+scan <- sapply(spec,function(x) x@acquisitionNum)
+spec@elementMetadata$peak_id <- paste0('FT',scan)
+# save the mgf
+writeMgfData(spec,'PMDDAlink.mgf')
+# generate featuer table from MS1
+Row.names <- paste0('FT',scan)[match(rownames(dda$data),unique(idx$grp))]
+mzmed <- dda$mz
+rtmed <- dda$rt
+df <- cbind(Row.names,mzmed,rtmed,dda$data)
+write.table(df,'PMDDAlink.txt',sep = '\t',row.names = F)
+# save the linked MS1
+enviGCMS::getcsv(dda,'PMDDAlink')
+## upload here for FBMN
+## https://gnps.ucsd.edu/
 ```
 
 ## Local MS1 annotation

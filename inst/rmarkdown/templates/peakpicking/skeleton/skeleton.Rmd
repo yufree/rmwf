@@ -231,7 +231,7 @@ If you want to skip parameter optimization for xcms, you could use function from
 mzrt3 <- enviGCMS:::getdata(path,pmethod = 'hplcorbitrap')
 ```
 
-## Data visulization
+## Data visualization
 
 ```{r}
 library(xcms)
@@ -440,6 +440,24 @@ xr.l = bplapply(xset@filepaths, xcmsRaw, profstep=0)
 xs.warpgroup = group.warpgroup(xset, xr.l = xr.l, rt.max.drift = 20, ppm.max.drift = 3, rt.aligned.lim = 5,smooth.n = 5)
 saveRDS(xs.warpgroup,file = 'peak.RDS')
 saveRDS(xset,file = 'peakraw.RDS')
+```
+
+# Positive Negative connection
+
+This section can be used to build the connection between positive and negative mode.
+
+```{r}
+# import the MS1 data from both modes
+pos <- enviGCMS::getmzrtcsv('rppmzrt.csv')
+neg <- enviGCMS::getmzrtcsv('rpnmzrt.csv')
+# build the connection
+con <- pmd::getposneg(pos,neg)
+# filter the connection based on correlation and retention time
+concor <- con[abs(con$diffrt)<10&abs(con$cor)>0.6,]
+write.csv(concor,'posneg.csv')
+# generate target list
+ppn <- gettarget(concor$pos,concor$rt,n=6,Drt = 0.2,ce=20,name = 'posnegp')
+npn <- gettarget(concor$neg,concor$rt,n=6,Drt = 0.2,ce=20,name = 'posnegn')
 ```
 
 ## Tips
