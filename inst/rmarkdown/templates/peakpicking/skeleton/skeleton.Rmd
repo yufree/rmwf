@@ -11,15 +11,16 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,eval=FALSE,cache = TRUE,message=TRUE,warning=FALSE)
-library(rmwf)
-sessionInfo()
 ```
+
+This workflow will compare xcms based peak picking with IPO or Autotuner for parameter optimization.
 
 ## Demo data
 
 We prepared 5 NIST 1950 samples and 6 matrix blank samples as demodata.
 
 ```{r}
+library(rmwf)
 # Download demo data from figshare
 library(rfigshare)
 dir.create(file.path('data'), showWarnings = FALSE)
@@ -28,7 +29,7 @@ setwd(file.path('data'))
 dir.create(file.path('NIST1950'), showWarnings = FALSE)
 setwd(file.path('NIST1950'))
 article_id <- 13252196
-details <- fs_details(article_id)
+details <- fs_details(article_id, mine = FALSE, session = NULL)
 name <- sapply(details$files,function(x) x$name)
 url <- sapply(details$files,function(x) x$download_url)
 download.file(url, name)
@@ -37,7 +38,7 @@ setwd('..')
 dir.create(file.path('Matrix'), showWarnings = FALSE)
 setwd(file.path('Matrix'))
 article_id <- 13252244
-details <- fs_details(article_id)
+details <- fs_details(article_id, mine = FALSE, session = NULL)
 name <- sapply(details$files,function(x) x$name)
 url <- sapply(details$files,function(x) x$download_url)
 download.file(url, name)
@@ -87,7 +88,7 @@ save(para,file = 'para.RData')
 Use parameters from IPO for xcms and design a function for peak picking.
 
 ```{r}
-load('para.RData')
+data(para)
 library(xcms)
 library(stringr)
 getrtmz <- function(path,index = NULL){
@@ -142,8 +143,8 @@ Tutorial is [here](https://bioconductor.org/packages/release/bioc/vignettes/Auto
 # BiocManager::install("Autotuner")
 library(Autotuner)
 # Creating AutoTuner Object
-Autotuner <- createAutotuner(files[c(7:11)],
-                             meta[c(7:11),],
+Autotuner <- createAutotuner(files[c(6:10)],
+                             meta[c(6:10),],
                              file_col = 'name',
                              factorCol = 'factor')
 # Total Ion Current Peak Identification
@@ -175,6 +176,8 @@ eicParamEsts <- EICparams(Autotuner = Autotuner,
 ar <- returnParams(eicParamEsts, Autotuner)
 ```
 
+Use parameters from Autoruner for xcms and design a function for peak picking.
+
 ```{r}
 library(xcms)
 library(stringr)
@@ -191,21 +194,13 @@ getrtmz2 <- function(path,index = NULL){
                   snthresh        = ar$eicParams$estimates[5],
                   prefilter       = ar$eicParams$estimates[c(4,3)]
                   )
-  xset <- retcor(xset, method = "obiwarp",)
+  xset <- retcor(xset, method = "obiwarp")
   xset <- group(xset,
     method  = "density",
-    minfrac = 0.5)
+    minfrac = 1)
   xset <- fillPeaks(xset)
   return(xset)
 }
-```
-
-## apLCMS
-
-```{r}
-library(apLCMS)
-aligned<-cdf.to.ftr(path, file.pattern=".mzML", n.nodes=4, min.exp=5,min.run=12,min.pres=1)
-ft <- aligned$final.ftrs
 ```
 
 ## Peaks list
@@ -218,178 +213,49 @@ This chunk is used to generate peaks list and related csv, xcmsset object, xcmsE
 srm <- getrtmz(path)
 srm2 <- getrtmz2(path)
 
-# back up the xcmsset object, xcmsEIC object and peak list
-mzrt <- enviGCMS::getmzrt(srm, name = 'srm', eic = T, type = 'mapo')
-mzrt2 <- enviGCMS::getmzrt(srm2, name = 'srm', eic = T, type = 'mapo')
-mzrt3 <- list(mz=ft[,1],rt=ft[,2],data=as.data.frame(ft[,-c(1:4)]),group=rep('NIST1950',5))
+# get peak list
+mzrt <- enviGCMS::getmzrt(srm)
+mzrt2 <- enviGCMS::getmzrt(srm2)
 ```
 
 If you want to skip parameter optimization for xcms, you could use function from `enviGCMS` package. You could check this [paper](https://www.nature.com/articles/nprot.2011.454) for those parameters.
 
-```{r eval=FALSE}
+```{r}
 # pmethod could be 'hplcorbitrap', 'uplcorbitrap', 'hplcqtof', 'hplchqtof', 'uplcqtof', 'uplchqtof'
-mzrt3 <- enviGCMS:::getdata(path,pmethod = 'hplcorbitrap')
+mzrt3 <- enviGCMS:::getdata(path,pmethod = 'hplchqtof')
+mzrt3 <- enviGCMS::getmzrt(mzrt3)
 ```
 
-## Data visualization
+## Compare
+
+Here we use venn diagram to compare the results from IPO, Autotuner, and default setting. However, peaks number is only one method to compare and you might need to check EIC for a fair comparison and related code is in the Visualization workflow.
 
 ```{r}
-library(xcms)
-# you could load you eic and xset object, here is the demo data
-data("srmeic")
-data("srmxset")
-# EIC for m/z 239.0911(four digits) and retention time 229.4s(one digits)
-plot(srmeic,srmxset,groupidx = 'M239.0911T229.4')
-# PCA
-enviGCMS::plotpca(data = mzrt$data,lv = mzrt$group$sample_group)
-# MDS
-library(MASS)
-d <- dist(t(mzrt$data)) # euclidean distances between the rows
-fit <- isoMDS(d, k=3) # k is the number of dim
-fit # view results
-x <- fit$points[,1]
-y <- fit$points[,2]
-plot(x, y, xlab="Coordinate 1", ylab="Coordinate 2",
-     main="Metric MDS", type="n")
-text(x, y, cex=.7) 
-
-# mzrt plot
-enviGCMS::plotmr(mzrt)
-# RSD plot
-enviGCMS::plotrsd(mzrt)
-# mean rsd analysis
-library(tidyverse)
-a <- cbind.data.frame(NISTmean = gm[,1],NISTrsd = gr[,1])
-p <- ggplot(a,aes(x=log10(NISTmean),y=NISTrsd)) +
-        ggtitle("Mean vs. RSD%") +
-        xlab("log10(Mean)") +
-        ylab("rsd%") 
-# Visualization 1
-p1 <-  p + 
-  geom_point(alpha = 0.5, colour="orange")+
-        geom_density2d()
-p1
-# Visualization 2
-p2 <- p +
-  stat_bin_hex(colour="white", na.rm=TRUE) +
-  scale_fill_gradientn(colours=c("red","orange"), name = "Frequency", na.value=NA)
-p2
-# Visualization 3
-smoothScatter(x=log10(a$NISTmean),y=a$NISTrsd)
-# density plot
-enviGCMS::plotden(mzrt$data,lv=mzrt$group$sample_group,ylim = c(0,1))
-# heatmap
-enviGCMS::plothm(mzrt$data,lv=factor(mzrt$group$sample_group),index = c(1:20))
-# TSNE
-# rtsne_out <- Rtsne::Rtsne(t(mzrtfilter$data))
-# plot(rtsne_out)
-# visulize the batch effect/run order effects
-enviGCMS::plotrla(mzrt$data,lv = as.factor(mzrt$group$sample_group))
-enviGCMS::plotridges(mzrt$data,lv = factor(mzrt$group$sample_group))
+# align the peaks list
+re <- getcompare(mzrt,mzrt2,mzrt3)
+ipo <- paste0(round(re[[1]]$mz,4),'@',round(re[[1]]$rt,1))
+autotuner <- paste0(round(re[[2]]$mz,4),'@',round(re[[2]]$rt,1))
+default <- paste0(round(re[[3]]$mz,4),'@',round(re[[3]]$rt,1))
+compare <- fromList(list(ipo,autotuner,default))
+# library(UpSetR)
+# upset(compare, order.by = "freq",nsets = 3)
+# generate venn diagram
+library(venn)
+venn::venn(compare,snames = c('ipo','autotuner','default'))
+# show the peaks coverage
+par(mfrow = c(1,3))
+plot(mzrt$mz~mzrt$rt, pch = 19, col = 'black',main = 'IPO')
+plot(mzrt2$mz~mzrt2$rt, pch = 19, col = 'red',main = 'Autotuner')
+plot(mzrt3$mz~mzrt3$rt, pch = 19, col = 'blue',main = 'default')
 ```
 
-### Visualization for xcms 3
+## Tips
 
-```{r}
-# data visualization for xcms 3 object
-files <- list.files(path,pattern = ".CDF|.mzXML|.mzML",full.names = T,recursive = T)
-  if(!is.null(index)){
-    files<- files[index]
-    }
-group <- xcms:::phenoDataFromPaths(files)
-  if(NCOL(group)==1){
-      sample_group <- group$class
-  }else{
-      cols <- colnames(group)
-      sample_group <-  do.call(paste,c(group[cols],sep='_'))
-  }
-sample_name=sub(basename(files),pattern = ".CDF|.mzXML|.mzML",replacement = '')
-pd <- data.frame(sample_name, sample_group,stringsAsFactors = F)
-raw_data <- MSnbase::readMSData(files = files, pdata = new("NAnnotatedDataFrame", pd),
-                       mode = "onDisk")
-## Get the base peak chromatograms. This reads data from the files.
-bpis <- xcms::chromatogram(raw_data, aggregationFun = "max")
-## Define colors for the two groups
-group_colors <- paste0(RColorBrewer::brewer.pal(3, "Set1")[1:2], "60")
-names(group_colors) <- c("Nist 1950", "Matrix")
-## Plot all chromatograms.
-plot(bpis, col = group_colors[raw_data$sample_group])
-## quick vis
-tc <- split(tic(raw_data), f = fromFile(raw_data))
-boxplot(tc, col = group_colors[raw_data$sample_group],
-        ylab = "intensity", main = "Total ion current")
-bic <- split(bpi(raw_data), f = fromFile(raw_data))
-boxplot(bic, col = group_colors[raw_data$sample_group],
-        ylab = "intensity", main = "Base peak ion current")
-## EIC
-## Define the rt and m/z range of the peak area
-rtr <- c(200, 900)
-mzr <- c(334.9, 335.1)
-## extract the chromatogram
-chr_raw <- chromatogram(raw_data, mz = mzr, rt = rtr)
-plot(chr_raw, col = group_colors[chr_raw$sample_group])
-
-# remove co-elution and column wash phase
-filter_data <- filterRt(raw_data,rt = c(100,800))
-cwp <- CentWaveParam(peakwidth = c(para$min_peakwidth,para$max_peakwidth), 
-                       ppm             = para$ppm,
-                       noise           = para$noise,
-                       snthresh        = para$snthresh,
-                       mzdiff          = para$mzdiff,
-                       prefilter       = c(para$prefilter,para$value_of_prefilter),
-                       mzCenterFun     = para$mzCenterFun,
-                       integrate       = para$integrate,
-                       fitgauss        = para$fitgauss,
-                       verboseColumns  = para$verbose.columns)
-owp <- ObiwarpParam(binSize        = para$profStep,
-                      centerSample = para$center,
-                      response       = para$response,
-                      distFun        = para$distFunc,
-                      gapInit        = para$gapInit,
-                      gapExtend      = para$gapExtend,
-                      factorDiag     = para$factorDiag,
-                      factorGap      = para$factorGap,
-                      localAlignment = ifelse(para$localAlignment==0,F,T))
-pdp <- PeakDensityParam(sampleGroups = pd$sample_group,
-                        bw      = para$bw,
-                        minFraction = para$minfrac,
-                        minSamples = para$minsamp,
-                        maxFeatures = para$max,
-                        binSize = para$mzwid)
-
-xdata <- findChromPeaks(filter_data, param = cwp)
-xdata <- adjustRtime(xdata, param = owp)
-xdata <- groupChromPeaks(xdata, param = pdp)
-xdata <- fillChromPeaks(xdata)
-
-## check figure
-plotChromPeaks(xdata, file = 3)
-plotChromPeaks(xdata, file = 10)
-plotChromPeakImage(xdata)
-## check eic figure
-plot(chr_raw, col = group_colors[chr_raw$sample_group], lwd = 2)
-highlightChromPeaks(xdata, col = group_colors[chr_raw$sample_group],
-                    lty = 3, rt = rtr, mz = mzr, border = NA,
-                    type = "polygon")
-## check peak shift
-ints <- split(log2(chromPeaks(xdata)[, "into"]),
-              f = chromPeaks(xdata)[, "sample"])
-boxplot(ints, varwidth = TRUE, col = group_colors[xdata$sample_group],
-        ylab = expression(log[2]~intensity), main = "Peak intensities")
-grid(nx = NA, ny = NULL)
-## Get the base peak chromatograms.
-bpis_adj <- chromatogram(xdata, aggregationFun = "max")
-par(mfrow = c(2, 1), mar = c(4.5, 4.2, 1, 0.5))
-plot(bpis_adj, col = group_colors[bpis_adj$sample_group])
-## Plot also the difference of adjusted to raw retention time.
-plotAdjustedRtime(xdata, col = group_colors[xdata$sample_group])
-```
-
-## Peaks filtering
+### Peaks filtering
 
 Peaks list could be processed by experimental design in thie chunk.
 
-```{r pf}
+```{r eval=F}
 # get the mean and rsd for each group
 mzrtm <- enviGCMS::getdoe(mzrt)
 gm <- mzrtm$groupmean
@@ -418,49 +284,11 @@ mzrtfilter <- enviGCMS::getfilter(mzrt,rowindex = index,colindex = !qcindex, nam
 
 It's hard to estimate the sample size for certain metabolomics study when the effect size is different among features. In this case, we will perform power analysis on each feature considering FDR control with fixed power (0.8). Then the numbers for each peaks could be calculated. To retain the peaks with enough statistical power, the peak with sample numbers larger than the real group numbers would be removed. Such estimation could be done by enviGCMS package.
 
-```{r}
+```{r eval=F}
 x <- enviGCMS::getpower(mzrt)
 index <- x$n<=min(table(x$group$sample_group))
 sum(index)
 ```
-
-## Wrapgroup
-
-```{r}
-BiocParallel::SnowParam()
-ptm <- proc.time()
-xset <- getrtmz2(path)
-proc.time() - ptm
-library(doParallel)
-cl = makeCluster(detectCores() - 1)
-registerDoParallel(cl)
-library(warpgroup)
-library(xcms)
-xr.l = bplapply(xset@filepaths, xcmsRaw, profstep=0)
-xs.warpgroup = group.warpgroup(xset, xr.l = xr.l, rt.max.drift = 20, ppm.max.drift = 3, rt.aligned.lim = 5,smooth.n = 5)
-saveRDS(xs.warpgroup,file = 'peak.RDS')
-saveRDS(xset,file = 'peakraw.RDS')
-```
-
-# Positive Negative connection
-
-This section can be used to build the connection between positive and negative mode.
-
-```{r}
-# import the MS1 data from both modes
-pos <- enviGCMS::getmzrtcsv('rppmzrt.csv')
-neg <- enviGCMS::getmzrtcsv('rpnmzrt.csv')
-# build the connection
-con <- pmd::getposneg(pos,neg)
-# filter the connection based on correlation and retention time
-concor <- con[abs(con$diffrt)<10&abs(con$cor)>0.6,]
-write.csv(concor,'posneg.csv')
-# generate target list
-ppn <- gettarget(concor$pos,concor$rt,n=6,Drt = 0.2,ce=20,name = 'posnegp')
-npn <- gettarget(concor$neg,concor$rt,n=6,Drt = 0.2,ce=20,name = 'posnegn')
-```
-
-## Tips
 
 -   Convert XCMSnExp object into xcmsSet object
 
@@ -482,3 +310,8 @@ list2 <- BiocParallel::bplapply(list,group)
 xcmsSetdemoagain <- Reduce('c',list2)
 # for more higher order function in R, check here: http://www.johnmyleswhite.com/notebook/2010/09/23/higher-order-functions-in-r/
 ```
+
+```{r}
+sessionInfo()
+```
+
