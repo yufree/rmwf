@@ -10,7 +10,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,eval = FALSE)
+knitr::opts_chunk$set(echo = TRUE,eval = T)
 ```
 
 ## Demo data
@@ -20,21 +20,26 @@ We prepared 5 NIST 1950 samples and 6 matrix blank samples as demodata.
 ```{r}
 library(rmwf)
 data("mzrt")
+# impute the data
+mzrt$data <- enviGCMS::getimputation(mzrt)$data
 ```
 
-# Visualization
+## Check the data
+
+Here we use Relative Log Abundance (RLA) plots, relative Log Abundance Ridge (RLAR) plots, and PCA visualization to check the data.
 
 ```{r ba}
 # visualize the batch effect
 enviGCMS::plotrla(mzrt$data,lv = as.factor(mzrt$group$sample_group))
-enviGCMS::plotridges(mzrt$data,lv = factor(mzrt$group$sample_group))
+enviGCMS::plotridges(mzrt$data,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(mzrt$data,lv = as.numeric(as.factor(mzrt$group$sample_group)))
 ```
 
 ## Correction
 
 ### Functions
 
-Here is functions for 17 batch correction methods.
+Here is functions for 17 normalization / batch correction methods.
 
 ```{r}
 # PMID: 16762068
@@ -50,6 +55,7 @@ limmafit <- function(data, lv, batch = NULL,log=F){
                 lmfit <- limma::lmFit(data, mod)
                 signal <- lmfit$coef[, 1:nlevels(lv)] %*% t(mod[, 1:nlevels(lv)])
                 error <- data - signal
+                datacor <- signal + error
                 rownames(signal) <- rownames(error) <- rownames(data)
                 colnames(signal) <- colnames(error) <- colnames(data)
                 # find the peaks with significant differences by F test
@@ -286,7 +292,9 @@ pcacor <- function(data, lv,log=T) {
 
 ```
 
-### Correction
+### Batch Correction / Normalization
+
+Here is the normalization process.
 
 ```{r}
 re0 <- limmafit(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
@@ -325,3 +333,128 @@ re16 <- isvacor(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
 
 re17 <- pcacor(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
 ```
+
+## Compare the results
+
+Here we use Relative Log Abundance (RLA) plots, relative Log Abundance Ridge (RLAR) plots, and PCA visualization to show the results of normalization.
+
+```{r}
+# normalize to zero mean and unit variance
+enviGCMS::plotrla(re1$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re1$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re1$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# normalize to zero mean and squared root variance
+enviGCMS::plotrla(re2$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re2$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re2$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# normalize to zero mean but variance/SE
+enviGCMS::plotrla(re3$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re3$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re3$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# vast scaling
+enviGCMS::plotrla(re4$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re4$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re4$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# level scaling
+enviGCMS::plotrla(re5$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re5$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re5$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# total sum row
+enviGCMS::plotrla(re6$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re6$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re6$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# Median row
+enviGCMS::plotrla(re7$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re7$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re7$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# Mean row
+enviGCMS::plotrla(re8$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re8$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re8$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# PQN
+enviGCMS::plotrla(re9$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re9$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re9$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# VSN
+enviGCMS::plotrla(re10$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re10$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re10$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# Quantile
+enviGCMS::plotrla(re11$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re11$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re11$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# lumi rsn
+enviGCMS::plotrla(re12$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re12$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re12$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# Limma CyclicLoess
+enviGCMS::plotrla(re13$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re13$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re13$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# AFFA CUBICSpline
+enviGCMS::plotrla(re14$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re14$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re14$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# SVA
+enviGCMS::plotrla(re15$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re15$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re15$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# iSVA
+enviGCMS::plotrla(re16$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re16$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re16$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+# PCR
+enviGCMS::plotrla(re17$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(re17$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(re17$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+```
+
+## Data with QCs
+
+A regression or any machine learning models can be built on QC samples to capture the trend or shift during the injection or different batches. Then such model can be used to predict the trends in the real samples for each peak and the corrected data can be accessed by removing such trends. You will need the injection order for such QC based batch correction method.
+
+Here is an example using loess model to capture the trend and you can use any other prediction models with parameters optimization to generate a better batch correction model based on QC samples.
+
+```{r}
+# load the demo data
+data(mzrt)
+mzrt <- enviGCMS::getimputation(mzrt)
+# assign an order and sample 1, 3, 5, 7, 10 were treated as QC samples
+orderqc <- c(1,3,5,7,10)
+orderall <- c(1:10)
+# train the model with QC samples
+qc <- t(mzrt$data[,orderqc])
+data <- t(mzrt$data)
+## variable selection by loess model
+cordata <- data.frame()
+for(i in seq_along(mzrt$mz)){
+mytrain <- loess(qc[,i]~orderqc)
+dt <- predict(mytrain,orderall)/data[,i]
+cordata <- rbind.data.frame(cordata,dt)
+}
+colnames(cordata) <- colnames(mzrt$data)
+rownames(cordata) <- rownames(mzrt$data)
+# get the corrected data
+mzrt$dataCorrected <- cordata
+# visualization
+enviGCMS::plotrla(mzrt$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(mzrt$dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(mzrt$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+```
+
