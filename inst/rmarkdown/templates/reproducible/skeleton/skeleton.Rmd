@@ -127,9 +127,57 @@ colnames(data) <- head[,match(metadata$`Sample Name`,head,nomatch = F)]
 group <- metadata[match(colnames(data),metadata$`Sample Name`,nomatch = F),]
 mz <- data0[,head=='mass_to_charge']
 rt <- data0[,head=='retention_time']
-# construnt the list
+# construct the list
 list <- list(data=data,group=group,mz=mz,rt=rt)
 ```
+
+## Rmassbank
+
+Workflow to process tandem MS files and build MassBank records.
+
+```{r}
+# https://bioconductor.org/packages/release/bioc/html/RMassBank.html
+RmbDefaultSettings()
+rmbo <- getOption("RMassBank")
+rmbo$spectraList <- list(
+    list(mode="CID", ces="10eV", ce="10eV", res=12000),
+    list(mode="CID", ces="20eV", ce="20eV", res=12000)
+)
+
+rmbo$multiplicityFilter <- 1
+rmbo$annotations$instrument <- "Bruker micrOTOFq"
+rmbo$annotations$instrument_type <- "LC-ESI-QTOF"
+rmbo$recalibrator$MS1 <- "recalibrate.identity"
+rmbo$recalibrator$MS2 <- "recalibrate.identity"
+options("RMassBank" = rmbo)
+
+msmsList <- newMsmsWorkspace()
+
+msmsList@files <- list.files(system.file("spectra.Glucolesquerellin",
+                                         package = "RMassBankData"),
+                             "Glucolesquerellin.*mzData", full.names=TRUE)
+
+loadList(system.file("list/PlantDataset.csv",package="RMassBankData"))
+
+Args <- list(method="centWave",
+             peakwidth=c(5,12),
+             prefilter=c(0,0),
+             ppm=25, snthr=2)
+
+msmsList <- msmsRead(msmsList, files= msmsList@files, 
+                     readMethod = "xcms", mode = "mH", Args = Args, plots = TRUE)
+msmsList <- msmsWorkflow(msmsList, steps=2:8,
+                         mode="mH", readMethod="xcms")
+
+
+mb <- newMbWorkspace(msmsList)
+mb <- resetInfolists(mb)
+mb <- loadInfolist(mb,system.file("infolists/PlantDataset.csv",
+                                  package = "RMassBankData"))
+## Step
+mb <- mbWorkflow(mb, steps=1:8)
+```
+
 
 ## Metabolomics WorkBench
 

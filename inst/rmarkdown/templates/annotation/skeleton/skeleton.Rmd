@@ -15,29 +15,79 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Demo data
 
-We prepared 5 NIST 1950 samples and 6 matrix blank samples as demodata.
+We prepared 5 NIST 1950 samples and 5 matrix blank samples as demo data.
 
 ```{r}
 library(rmwf)
 data("mzrt")
+# Download demo data from figshare
+library(rfigshare)
+dir.create(file.path('data'), showWarnings = FALSE)
+setwd(file.path('data'))
+# NIST1950 postive data
+dir.create(file.path('NIST1950'), showWarnings = FALSE)
+setwd(file.path('NIST1950'))
+article_id <- 13252196
+details <- fs_details(article_id, mine = FALSE, session = NULL)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+setwd('..')
+# matrix positive data
+dir.create(file.path('Matrix'), showWarnings = FALSE)
+setwd(file.path('Matrix'))
+article_id <- 13252244
+details <- fs_details(article_id, mine = FALSE, session = NULL)
+name <- sapply(details$files,function(x) x$name)
+url <- sapply(details$files,function(x) x$download_url)
+download.file(url, name)
+setwd('..')
+path <- getwd()
+files <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
+basename <- basename(path)
+group <- xcms:::phenoDataFromPaths(files)$class
+meta <- cbind.data.frame(name=basename,factor=group)
 ```
 
+# MS1 annotation
+
+Here is the usage of MS1 annotation tools. For MS1 feature data, the annotation can only find the redundant peaks such as isotopologues, adducts, multiple charged ions, and neutral loss. The identification of MS1 feature will not reveal structure information of the molecular. After removal of redundant peaks, Rdisop can be used to generate potential chemial formula.
+
 ## CAMERA
+
+CAMERA is the common annotation method for regular xcms workflow. You will get a peaks list with their roles in a pseudo spectra.
 
 ```{r}
 library(CAMERA)
 data("srmxset")
 data("srmeic")
-path <- system.file("extdata/data", package = "rmwf")
+path <- "data"
 srmxset@filepaths <- list.files(path,full.names = T,recursive = T)
-
 xsa <- CAMERA::annotate(srmxset, perfwhm=0.7, cor_eic_th=0.75,
 ppm=10, polarity="positive")
 # get the peaklist with annotation
 peaklist <- CAMERA::getPeaklist(xsa)
+peaklist$meanpeak <- apply(peaklist[,c(15:19)],1,mean)
+length(unique(peaklist$pcgroup))
+grouprt <- aggregate(peaklist$rt,by=list(peaklist$pcgroup), median)
+grouprt$psgrp <- as.numeric(grouprt$Group.1)
+grouprt2 <- merge(data.frame(xsa@annoGrp),grouprt,by='psgrp')
+cre <- cbind.data.frame(mz=grouprt2$mass+1.0073,rt=grouprt2$x)
+mass <- cre$fmz
+masscamera <- list()
+for(i in seq_along(mass)){
+  molecules <- Rdisop::decomposeMass(mass = mass[i],elements = initializeElements(c("C","H","N","O","P")))
+  if(!is.null(molecules)){
+      Formula <- getFormula(molecules)
+      Formulav <- Formula[getValid(molecules)=='Valid']
+      masscamera[[i]] <- Formulav
+    }
+}
 ```
 
 ## Ramcluster
+
+CAMERA is another common annotation method for regular xcms workflow. You will get a peaks list with their roles in a pseudo spectra.
 
 ```{r}
 library(RAMClustR)
@@ -46,16 +96,41 @@ rcp <- RAMClustR::ramclustR(srmxset)
 RC <- RAMClustR::do.findmain(rcp, mode = "positive", mzabs.error = 0.02, ppm.error = 10)
 meanpeak <- apply(t(rcp$MSdata),1,mean)
 df <-  cbind.data.frame(mz = rcp$fmz, rt = rcp$frt, cluster = rcp$featclus,meanpeak)
+# mass formula assign
+mass <- rcp$fmz
+massramclust <- list()
+for(i in seq_along(mass)){
+  molecules <- Rdisop::decomposeMass(mass = mass[i],elements = initializeElements(c("C","H","N","O","P")))
+  if(!is.null(molecules)){
+      Formula <- getFormula(molecules)
+      Formulav <- Formula[getValid(molecules)=='Valid']
+      massramclust[[i]] <- Formulav
+    }
+}
 ```
 
 ## pmd
 
+Pmd is a redundant peak detection tools for LC/GC-MS peaks list data. You will get a so-called 'one peak for one compound' peaks list for MS/MS analysis or other compounds level analysis such as reactomics.
+
 ```{r}
+data("srmxset")
 library(pmd)
 # pmd
 mzrt <- enviGCMS::getmzrt(srmxset)
 # get the peaklist
 mzrt <- pmd::globalstd(mzrt,ng=NULL)
+# mass formula assign
+mass <- mzrt$mz[mzrt$stdmassindex]
+masspmd <- list()
+for(i in seq_along(mass)){
+  molecules <- Rdisop::decomposeMass(mass = mass[i],elements = initializeElements(c("C","H","N","O","P")))
+  if(!is.null(molecules)){
+      Formula <- getFormula(molecules)
+      Formulav <- Formula[getValid(molecules)=='Valid']
+      masspmd[[i]] <- Formulav
+    }
+}
 # link pos and neg
 data("mzrtn")
 pos <- enviGCMS::getfilter(mzrt,colindex = grepl('NIST',colnames(mzrt$data)))
@@ -64,7 +139,75 @@ all <- pmd::getposneg(pos,neg)
 sum(abs(all$cor)>0.9,na.rm = T)
 ```
 
+## xMSannotator
+
+xMSannotator is a network-Based annotation of High-Resolution metabolomics MS1 data.
+
+```{r anno, eval=F}
+library(xMSannotator)
+data("adduct_weights")
+data <- mzrt$data
+mz <- mzrt$mz
+time <- mzrt$rt
+data <- as.data.frame(cbind(mz, time, data))
+data <- unique(data)
+num_nodes = 4
+xMSannotator::multilevelannotation(
+                                        dataA = data,
+                                        max.mz.diff = 5,
+                                        mode = 'pos',
+                                        outloc = './',
+                                        db_name = 'HMDB',
+                                        adduct_weights = adduct_weights,
+                                        filter.by = c("M+H"),
+                                        mass_defect_mode = 'pos',
+                                        num_nodes = 4
+)
+```
+
+## Local MS1 annotation
+
+You can make local annotation based on exact mass.
+
+```{r}
+# using hmdb and refmet compounds database with predefined adducts
+data(hr)
+re <- enviGCMS::getms1anno(c('Na-H','H','Na'),c(282.279, 281.113, 227.139, 227.139, 302.207), ppm = 5, db=hr)
+```
+
+# MS2 annotation
+
+## Generate MGF
+
+Here is the code to extract spectra data from raw data.
+
+```{r}
+library(xcms)
+dda_data <- MSnbase::readMSData(ddafile, mode = "onDisk")
+cwp <- xcms::CentWaveParam(snthresh = 5, noise = 100, ppm = 10,
+                     peakwidth = c(3, 30))
+dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
+dda_spectra <- chromPeakSpectra(dda_data)
+mz <- precursorMz(dda_spectra)
+rt <- rtime(dda_spectra)
+files <- fromFile(dda_spectra)
+
+# check precursor ions
+ex_mz <- 97.97
+chromPeaks(dda_data, mz = ex_mz, ppm = 20)
+ex_id <- rownames(chromPeaks(dda_data, mz = ex_mz, ppm = 20))
+ex_spectra <- dda_spectra[mcols(dda_spectra)$peak_id %in% ex_id]
+ex_spectrum <- combineSpectra(ex_spectra, method = consensusSpectrum, mzd = 0,
+                              ppm = 20, minProp = 0.8, weighted = FALSE,
+                              intensityFun = median, mzFun = median)
+plot(ex_spectrum[[1]])
+# output mgf
+# MSnbase::writeMgfData(ex_spectrum,'dda.mgf')
+```
+
 ## GNPS FBMN
+
+Here is the code to generate data for GNPS FBMN MS2 annotation through xcms.
 
 ```{r eval=FALSE}
 library(xcms)
@@ -108,128 +251,9 @@ write.table(dataTable, "xcms_all.txt", sep = "\t", quote = FALSE,
 ## https://gnps.ucsd.edu
 ```
 
-### Generate MGF
-
-```{r}
-library(xcms)
-dda_data <- MSnbase::readMSData(ddafile, mode = "onDisk")
-cwp <- xcms::CentWaveParam(snthresh = 5, noise = 100, ppm = 10,
-                     peakwidth = c(3, 30))
-dda_data <- xcms::findChromPeaks(dda_data, param = cwp)
-dda_spectra <- chromPeakSpectra(dda_data)
-mz <- precursorMz(dda_spectra)
-rt <- rtime(dda_spectra)
-files <- fromFile(dda_spectra)
-
-# check precursor ions
-ex_mz <- 97.97
-chromPeaks(dda_data, mz = ex_mz, ppm = 20)
-ex_id <- rownames(chromPeaks(dda_data, mz = ex_mz, ppm = 20))
-ex_spectra <- dda_spectra[mcols(dda_spectra)$peak_id %in% ex_id]
-ex_spectrum <- combineSpectra(ex_spectra, method = consensusSpectrum, mzd = 0,
-                              ppm = 20, minProp = 0.8, weighted = FALSE,
-                              intensityFun = median, mzFun = median)
-plot(ex_spectrum[[1]])
-# output mgf
-# MSnbase::writeMgfData(ex_spectrum,'dda.mgf')
-```
-
-## xMSannotator
-
-```{r anno, eval=F}
-library(xMSannotator)
-data("adduct_weights")
-data <- mzrt$data
-mz <- mzrt$mz
-time <- mzrt$rt
-data <- as.data.frame(cbind(mz, time, data))
-data <- unique(data)
-num_nodes = 4
-xMSannotator::multilevelannotation(
-                                        dataA = data,
-                                        max.mz.diff = 5,
-                                        mode = 'pos',
-                                        outloc = './',
-                                        db_name = 'HMDB',
-                                        adduct_weights = adduct_weights,
-                                        filter.by = c("M+H"),
-                                        mass_defect_mode = 'pos',
-                                        num_nodes = 4
-)
-```
-
-## Formula assign
-
-```{r}
-data(mzrt)
-library(Rdisop)
-# isotop group formula assign
-p1 <- pmd::getpaired(mzrt)
-pi <- enviGCMS::getfilter(mzrt,rowindex = p1$isoindex)
-rtg <- p1$rtcluster[p1$isoindex]
-iso <- p1$iso
-formula <- list()
-for (i in 1:length(unique(iso$rtg))){
-  isoi <- iso[iso$rtg == unique(iso$rtg)[i],]
-  insi <- rowSums(pi$data[rtg==unique(iso$rtg)[i],],na.rm = T)
-  mzi <- round(pi$mz[rtg==unique(iso$rtg)[i]],4) 
-  net <- igraph::graph_from_data_frame(isoi,directed = F)
-  group <- igraph::groups(igraph::components(net))
-  groupi <- list()
-  for (j in 1:length(group)) {
-    mz <- round(as.numeric(group[[j]]),4)
-    inst <- insi[mzi%in%mz]
-    molecules <- decomposeIsotopes(masses = mz, intensities = inst,elements = initializeElements(c("C","H","N","O","P")))
-    if(!is.null(molecules)){
-      Formula <- getFormula(molecules)
-      Formulav <- Formula[getValid(molecules)=='Valid']
-      groupi[[j]] <- Formulav
-    }
-  }
-  formula[[i]] <- groupi
-}
-
-# mass formula assign
-p2 <- pmd::getstd(p1)
-mass <- p2$mz[p2$stdmassindex]
-massf <- list()
-for(i in 1:sum(p2$stdmassindex)){
-  molecules <- decomposeMass(mass = mass[i],elements = initializeElements(c("C","H","N","O","P")))
-  if(!is.null(molecules)){
-      Formula <- getFormula(molecules)
-      Formulav <- Formula[getValid(molecules)=='Valid']
-      massf[[i]] <- Formulav
-    }
-}
-```
-
-## Rdisop
-
-```{r eval=FALSE}
-library(Rdisop)
-# prepare formulas list
-masses <- sapply(formulas, function(x) getMass(getMolecule(x))   )
-# prepare peak list to get formula
-masses <- c(147.053, 148.056)
-intensities <- c(93, 5.8)
-molecules <- decomposeIsotopes(masses, intensities)
-cbind(getFormula(molecules), getScore(molecules), getValid(molecules))
-```
-
-## InterpretMSSpectrum
-
-```{r}
-library(InterpretMSSpectrum)
-data(mzrt)
-mz <- mzrt$mz
-int <- apply(mzrt$data, 1, sum)
-
-spectrum <- cbind.data.frame(mz=mz,int=int)
-x <- findMAIN(spectrum,ionmode = 'positive')
-plot(x)
-```
-
 ## Metfrag
+
+Here is the code using Metfrag for MS2 annotation.
 
 ```{r}
 library(metfRag)
@@ -289,56 +313,31 @@ settingsObject[["PeakList"]]<-matrix(c(
 scored.candidates<-run.metfrag(settingsObject)
 ```
 
-## rmassbank
+## Local MS2 annotation
+
+Local MS2 annotation is based on the similarity(dot product) between local database and your data.
 
 ```{r}
-# https://bioconductor.org/packages/release/bioc/html/RMassBank.html
-RmbDefaultSettings()
-rmbo <- getOption("RMassBank")
-rmbo$spectraList <- list(
-    list(mode="CID", ces="10eV", ce="10eV", res=12000),
-    list(mode="CID", ces="20eV", ce="20eV", res=12000)
-)
-
-rmbo$multiplicityFilter <- 1
-rmbo$annotations$instrument <- "Bruker micrOTOFq"
-rmbo$annotations$instrument_type <- "LC-ESI-QTOF"
-rmbo$recalibrator$MS1 <- "recalibrate.identity"
-rmbo$recalibrator$MS2 <- "recalibrate.identity"
-options("RMassBank" = rmbo)
-
-msmsList <- newMsmsWorkspace()
-
-msmsList@files <- list.files(system.file("spectra.Glucolesquerellin",
-                                         package = "RMassBankData"),
-                             "Glucolesquerellin.*mzData", full.names=TRUE)
-
-loadList(system.file("list/PlantDataset.csv",package="RMassBankData"))
-
-Args <- list(method="centWave",
-             peakwidth=c(5,12),
-             prefilter=c(0,0),
-             ppm=25, snthr=2)
-
-msmsList <- msmsRead(msmsList, files= msmsList@files, 
-                     readMethod = "xcms", mode = "mH", Args = Args, plots = TRUE)
-msmsList <- msmsWorkflow(msmsList, steps=2:8,
-                         mode="mH", readMethod="xcms")
-
-
-mb <- newMbWorkspace(msmsList)
-mb <- resetInfolists(mb)
-mb <- loadInfolist(mb,system.file("infolists/PlantDataset.csv",
-                                  package = "RMassBankData"))
-## Step
-mb <- mbWorkflow(mb, steps=1:8)
-
+data("qtof")
+# this is the sepctra of HMDB0034004
+file <- system.file("extdata", "challenge-msms.mgf", package = "rmwf")
+# dot product similarity
+anno1 <- enviGCMS::dotpanno(file,db = qtof)
+unique(anno1$name)
+# X rank algorithm
+anno2 <- enviGCMS::xrankanno(file,db = qtof)
+unique(anno2$name)
+# pmd msms annotation
+anno3 <- pmd::pmdanno(file,db=qtof)
+unique(anno2$name)
+enviGCMS::plotanno(anno3)
 ```
 
-## Extract mgf files and linked MS1 peaks (optional)
+# MS1 coupled with MS2 (optional)
+
+You can also use peaks list after the removal of redundant peaks to collect MS2 data. Then link them together by the following code.
 
 ```{r eval=F}
-# run the first download chunk to get the files path
 library(xcms)
 dda_data <- MSnbase::readMSData(pmddafile, mode = "onDisk")
 cwp <- xcms::CentWaveParam(noise = 0, ppm = 10,
@@ -374,28 +373,6 @@ enviGCMS::getcsv(dda,'PMDDAlink')
 ## https://gnps.ucsd.edu/
 ```
 
-## Local MS1 annotation
-
 ```{r}
-# using hmdb and refmet compounds database with predefined adducts
-data(hr)
-re <- enviGCMS::getms1anno(c('Na-H','H','Na'),c(282.279, 281.113, 227.139, 227.139, 302.207), ppm = 5, db=hr)
-```
-
-## Local MS2 annotation
-
-```{r}
-data("qtof")
-# this is the sepctra of HMDB0034004
-file <- system.file("extdata", "challenge-msms.mgf", package = "rmwf")
-# dot product similarity
-anno1 <- enviGCMS::dotpanno(file,db = qtof)
-unique(anno1$name)
-# X rank algorithm
-anno2 <- enviGCMS::xrankanno(file,db = qtof)
-unique(anno2$name)
-# pmd msms annotation
-anno3 <- pmd::pmdanno(file,db=qtof)
-unique(anno2$name)
-enviGCMS::plotanno(anno3)
+sessionInfo()
 ```

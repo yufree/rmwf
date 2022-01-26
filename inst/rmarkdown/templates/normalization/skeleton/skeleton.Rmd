@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE,eval = T)
 
 ## Demo data
 
-We prepared 5 NIST 1950 samples and 6 matrix blank samples as demodata.
+We prepared 5 NIST 1950 samples and 5 matrix blank samples as demo data.
 
 ```{r}
 library(rmwf)
@@ -429,7 +429,7 @@ enviGCMS::plotpca(re17$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample
 
 A regression or any machine learning models can be built on QC samples to capture the trend or shift during the injection or different batches. Then such model can be used to predict the trends in the real samples for each peak and the corrected data can be accessed by removing such trends. You will need the injection order for such QC based batch correction method.
 
-Here is an example using loess model to capture the trend and you can use any other prediction models with parameters optimization to generate a better batch correction model based on QC samples.
+Here is an example using loess or spline model to capture the trend and you can use any other prediction models with parameters optimization to generate a better batch correction model based on QC samples.
 
 ```{r}
 # load the demo data
@@ -438,23 +438,37 @@ mzrt <- enviGCMS::getimputation(mzrt)
 # assign an order and sample 1, 3, 5, 7, 10 were treated as QC samples
 orderqc <- c(1,3,5,7,10)
 orderall <- c(1:10)
-# train the model with QC samples
+# train the model with QC samples, you can perform the log transformation if the data are not follow normal distribution
 qc <- t(mzrt$data[,orderqc])
 data <- t(mzrt$data)
-## variable selection by loess model
-cordata <- data.frame()
-for(i in seq_along(mzrt$mz)){
-mytrain <- loess(qc[,i]~orderqc)
-dt <- predict(mytrain,orderall)/data[,i]
-cordata <- rbind.data.frame(cordata,dt)
+## build loess model on each peak
+loessbc <- function(i){
+        mytrain <- loess(qc[,i]~orderqc)
+        dt <- predict(mytrain,orderall)-data[,i]+median(data[,i])
+        return(dt)
 }
-colnames(cordata) <- colnames(mzrt$data)
-rownames(cordata) <- rownames(mzrt$data)
-# get the corrected data
-mzrt$dataCorrected <- cordata
+## build spline model on each peak
+smoothsplinebc <- function(i){
+        mytrain <- smooth.spline(qc[,i]~orderqc,cv = T)
+        dt <- predict(mytrain,orderall)$y-data[,i]+median(data[,i])
+        return(dt)
+}
+
+cordata <- BiocParallel::bplapply(c(1:ncol(data)),loessbc)
+dataCorrected <- do.call(cbind,cordata)
+colnames(dataCorrected) <- colnames(data)
+
+cordata <- BiocParallel::bplapply(c(1:ncol(data)),smoothsplinebc)
+dataCorrected2 <- do.call(cbind,cordata)
+colnames(dataCorrected2) <- colnames(data)
+
 # visualization
-enviGCMS::plotrla(mzrt$dataCorrected,lv = as.factor(mzrt$group$sample_group))
-enviGCMS::plotridges(mzrt$dataCorrected,lv = as.factor(mzrt$group$sample_group))
-enviGCMS::plotpca(mzrt$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+enviGCMS::plotrla(t(dataCorrected),lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(t(dataCorrected),lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(t(dataCorrected),lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+enviGCMS::plotrla(t(dataCorrected2),lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(t(dataCorrected2),lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(t(dataCorrected2),lv = as.numeric(as.factor(mzrt$group$sample_group)))
 ```
 

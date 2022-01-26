@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE,eval = F)
 
 ## Demo data
 
-We prepared 5 NIST 1950 samples and 6 matrix blank samples as demodata.
+We prepared 5 NIST 1950 samples and 5 matrix blank samples as demo data.
 
 ```{r}
 library(rmwf)
@@ -40,6 +40,8 @@ $$
 
 ### Linear regression
 
+Here we use limma package to perform differental analysis.
+
 ```{r}
 library(limma)
 design <- model.matrix(~factor(mzrt$group$sample_group))
@@ -54,9 +56,11 @@ sum(idx$adj.P.Val<0.05)
 
 ### Variable selection
 
+By changing the machine learning method of the following code, all the algorithms (238 in total) supported by caret package can be used to find biomarker.
+
 ```{r}
 library(caret)
-## Spliting data
+## Splitting data
 trainIndex <- createDataPartition(fs$group$sample_group, p = .5, 
                                   list = FALSE, 
                                   times = 1)
@@ -86,9 +90,9 @@ result <- gwqs(Y~wqs,data = train,mix_name = colnames(train)[-1],q = 4,plots = T
 
 ```
 
-### machine learning
+### compare multiple models
 
--   test multiple models
+Here is the code to compare multiple models
 
 ```{r sa}
 library(caret)
@@ -130,7 +134,9 @@ model_preds <- data.frame(model_preds)
 caTools::colAUC(model_preds, test$Y)
 ```
 
--   combine models
+### ensemble models
+
+You can build a meta-model by ensemble multiple machine learning models as one.
 
 ```{r ensemble,eval=F}
 # ensemble model
