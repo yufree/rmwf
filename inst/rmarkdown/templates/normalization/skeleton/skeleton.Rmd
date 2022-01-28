@@ -37,7 +37,71 @@ enviGCMS::plotpca(mzrt$data,lv = as.numeric(as.factor(mzrt$group$sample_group)))
 
 ## Correction
 
-### Functions
+### Data with QCs/Run order/Batch
+
+A regression or any machine learning models can be built on QC samples/Run order/Batch to capture the trend or shift during the injection or different batches. Then such model can be used to predict the trends in the real samples for each peak and the corrected data can be accessed by removing such trends. You will also need the injection order for such QC based batch correction method.
+
+Here is an example using loess or spline model to capture the trend and you can use any other prediction models with parameters optimization to generate a better batch correction model based on QC samples.
+
+```{r}
+# load the demo data
+data(mzrt)
+mzrt <- enviGCMS::getimputation(mzrt)
+# assign an order and sample 1, 3, 5, 7, 10 were treated as QC samples
+orderqc <- c(1,3,5,7,10)
+orderall <- c(1:10)
+# train the model with QC samples, you can perform the log transformation if the data are not follow normal distribution
+qc <- t(mzrt$data[,orderqc])
+data <- t(mzrt$data)
+## build loess model on each peak
+loessbc <- function(i){
+        mytrain <- loess(qc[,i]~orderqc)
+        dt <- predict(mytrain,orderall)-data[,i]+median(data[,i])
+        return(dt)
+}
+## build spline model on each peak
+smoothsplinebc <- function(i){
+        mytrain <- smooth.spline(qc[,i]~orderqc,cv = T)
+        dt <- predict(mytrain,orderall)$y-data[,i]+median(data[,i])
+        return(dt)
+}
+
+cordata <- BiocParallel::bplapply(c(1:ncol(data)),loessbc)
+dataCorrected <- do.call(cbind,cordata)
+colnames(dataCorrected) <- colnames(data)
+
+cordata <- BiocParallel::bplapply(c(1:ncol(data)),smoothsplinebc)
+dataCorrected2 <- do.call(cbind,cordata)
+colnames(dataCorrected2) <- colnames(data)
+
+# visualization
+enviGCMS::plotrla(t(dataCorrected),lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(t(dataCorrected),lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(t(dataCorrected),lv = as.numeric(as.factor(mzrt$group$sample_group)))
+
+enviGCMS::plotrla(t(dataCorrected2),lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(t(dataCorrected2),lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(t(dataCorrected2),lv = as.numeric(as.factor(mzrt$group$sample_group)))
+```
+
+Here is another method using ComBat method when you know the batch information.
+
+```{r}
+# load the demo data
+data(mzrt)
+mzrt <- enviGCMS::getimputation(mzrt)
+# assign batch information
+batch <- c(1,1,2,2,1,1,2,2,1,2)
+# Using combat method for batch correction
+data <- mzrt$data
+dataCorrected <- sva::ComBat(data,batch)
+# visualization
+enviGCMS::plotrla(dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotridges(dataCorrected,lv = as.factor(mzrt$group$sample_group))
+enviGCMS::plotpca(dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
+```
+
+### Data without QCs/run order/batch information
 
 Here is functions for 17 normalization / batch correction methods.
 
@@ -84,9 +148,7 @@ limmafit <- function(data, lv, batch = NULL,log=F){
         names(li) <- c("data","dataCorrected","signal","batch", "error", "p-values", "q-values")
         return(li)
 }
-
 # normalize to zero mean and unit variance
-
 AutoScaling <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         r <- rownames(data)
@@ -97,9 +159,7 @@ AutoScaling <- function(data,lv,log=T){
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # normalize to zero mean and squared root variance
-
 ParetoScaling <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         r <- rownames(data)
@@ -110,9 +170,7 @@ ParetoScaling <- function(data,lv,log=T){
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # normalize to zero mean but variance/SE
-
 RangeScaling <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         r <- rownames(data)
@@ -123,9 +181,7 @@ RangeScaling <- function(data,lv,log=T){
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # vast scaling
-
 VastScaling <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         r <- rownames(data)
@@ -136,9 +192,7 @@ VastScaling <- function(data,lv,log=T){
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # level scaling
-
 LevelScaling <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         r <- rownames(data)
@@ -149,9 +203,7 @@ LevelScaling <- function(data,lv,log=T){
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # total sum row
-
 TotalSum <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         r <- rownames(data)
@@ -162,9 +214,7 @@ TotalSum <- function(data,lv,log=T){
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # Median row
-
 MedianNorm <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         r <- rownames(data)
@@ -175,9 +225,7 @@ MedianNorm <- function(data,lv,log=T){
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # Mean row
-
 MeanNorm <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         r <- rownames(data)
@@ -188,9 +236,7 @@ MeanNorm <- function(data,lv,log=T){
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # PQN
-
 PQNorm <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         r <- rownames(data)
@@ -202,9 +248,7 @@ PQNorm <- function(data,lv,log=T){
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # VSN
-
 VSNNorm <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         fit <- vsn::vsnMatrix(data)
@@ -212,25 +256,20 @@ VSNNorm <- function(data,lv,log=T){
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # Quantile
-
 QuanNorm <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         data2 <- preprocessCore::normalize.quantiles(as.matrix(data), copy=FALSE)
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # lumi rsn
-
 LumiRobustSpline <- function(data,lv,log=T){
         if(log) data <- log(data+1)
         data2 <- lumi::rsn(data)
         li <- limmafit(data2,lv)
         return(li)
 }
-
 # Limma CyclicLoess
 LimmaCyclicLoess <- function(data,lv,log=T){
         if(log) data <- log(data+1)
@@ -289,54 +328,51 @@ pcacor <- function(data, lv,log=T) {
         message("Done!")
         return(li)
 }
-
 ```
-
-### Batch Correction / Normalization
 
 Here is the normalization process.
 
 ```{r}
 re0 <- limmafit(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# normalize to zero mean and unit variance
 re1 <- AutoScaling(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# normalize to zero mean and squared root variance
 re2 <- ParetoScaling(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# normalize to zero mean but variance/SE
 re3 <- RangeScaling(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# vast scaling
 re4 <- VastScaling(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# level scaling
 re5 <- LevelScaling(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# total sum row
 re6 <- TotalSum(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# Median row
 re7 <- MedianNorm(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# Mean row
 re8 <- MeanNorm(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# PQN
 re9 <- PQNorm(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# VSN
 re10 <- VSNNorm(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# Quantile
 re11 <- QuanNorm(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# lumi rsn
 re12 <- LumiRobustSpline(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# Limma CyclicLoess
 re13 <- LimmaCyclicLoess(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# AFFA CUBICSpline
 re14 <- LimmaCubicSpline(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# SVA
 re15 <- try(svacor(as.matrix(mzrt$data),factor(mzrt$group$sample_group)),T)
-
+# iSVA
 re16 <- isvacor(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
-
+# PCR
 re17 <- pcacor(as.matrix(mzrt$data),factor(mzrt$group$sample_group))
 ```
 
 ## Compare the results
 
-Here we use Relative Log Abundance (RLA) plots, relative Log Abundance Ridge (RLAR) plots, and PCA visualization to show the results of normalization.
+Here we use Relative Log Abundance (RLA) plots, relative Log Abundance Ridge (RLAR) plots, and PCA visualization to show the results of normalization for the data without QCs/Run Order/Batch information.
 
 ```{r}
 # normalize to zero mean and unit variance
@@ -423,52 +459,5 @@ enviGCMS::plotpca(re16$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample
 enviGCMS::plotrla(re17$dataCorrected,lv = as.factor(mzrt$group$sample_group))
 enviGCMS::plotridges(re17$dataCorrected,lv = as.factor(mzrt$group$sample_group))
 enviGCMS::plotpca(re17$dataCorrected,lv = as.numeric(as.factor(mzrt$group$sample_group)))
-```
-
-## Data with QCs
-
-A regression or any machine learning models can be built on QC samples to capture the trend or shift during the injection or different batches. Then such model can be used to predict the trends in the real samples for each peak and the corrected data can be accessed by removing such trends. You will need the injection order for such QC based batch correction method.
-
-Here is an example using loess or spline model to capture the trend and you can use any other prediction models with parameters optimization to generate a better batch correction model based on QC samples.
-
-```{r}
-# load the demo data
-data(mzrt)
-mzrt <- enviGCMS::getimputation(mzrt)
-# assign an order and sample 1, 3, 5, 7, 10 were treated as QC samples
-orderqc <- c(1,3,5,7,10)
-orderall <- c(1:10)
-# train the model with QC samples, you can perform the log transformation if the data are not follow normal distribution
-qc <- t(mzrt$data[,orderqc])
-data <- t(mzrt$data)
-## build loess model on each peak
-loessbc <- function(i){
-        mytrain <- loess(qc[,i]~orderqc)
-        dt <- predict(mytrain,orderall)-data[,i]+median(data[,i])
-        return(dt)
-}
-## build spline model on each peak
-smoothsplinebc <- function(i){
-        mytrain <- smooth.spline(qc[,i]~orderqc,cv = T)
-        dt <- predict(mytrain,orderall)$y-data[,i]+median(data[,i])
-        return(dt)
-}
-
-cordata <- BiocParallel::bplapply(c(1:ncol(data)),loessbc)
-dataCorrected <- do.call(cbind,cordata)
-colnames(dataCorrected) <- colnames(data)
-
-cordata <- BiocParallel::bplapply(c(1:ncol(data)),smoothsplinebc)
-dataCorrected2 <- do.call(cbind,cordata)
-colnames(dataCorrected2) <- colnames(data)
-
-# visualization
-enviGCMS::plotrla(t(dataCorrected),lv = as.factor(mzrt$group$sample_group))
-enviGCMS::plotridges(t(dataCorrected),lv = as.factor(mzrt$group$sample_group))
-enviGCMS::plotpca(t(dataCorrected),lv = as.numeric(as.factor(mzrt$group$sample_group)))
-
-enviGCMS::plotrla(t(dataCorrected2),lv = as.factor(mzrt$group$sample_group))
-enviGCMS::plotridges(t(dataCorrected2),lv = as.factor(mzrt$group$sample_group))
-enviGCMS::plotpca(t(dataCorrected2),lv = as.numeric(as.factor(mzrt$group$sample_group)))
 ```
 
