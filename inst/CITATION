@@ -1,0 +1,15 @@
+citHeader("To cite rmwf in publications use:")
+
+citEntry(
+  entry    = "Article",
+  title    = "Reproducible untargeted metabolomics workflow for exhaustive MS2 data acquisition of MS1 features",
+  author   = "Yu, M., Dolios, G. & Petrick, L.",
+  journal  = "J Cheminform ",
+  year     = "2022",
+  volume   = "14",
+  number   = "6",
+  url      = "https://doi.org/10.1186/s13321-022-00586-8",
+  textVersion = paste(
+    "Yu, M., Dolios, G. & Petrick, L."," Reproducible untargeted metabolomics workflow for exhaustive MS2 data acquisition of MS1 features.","J Cheminform 14, 6 (2022)".
+  )
+)
