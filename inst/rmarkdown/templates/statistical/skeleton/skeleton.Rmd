@@ -171,3 +171,82 @@ model_preds2$ensemble <- predict(glm_ensemble, newdata=test, type="prob")
 CF <- coef(glm_ensemble$ens_model$finalModel)[-1]
 caTools::colAUC(model_preds2, test$Y)
 ```
+
+## AutoML
+
+AutoML (Automatic Machine Learning) made it easy for non-experts to experiment with machine learning. It can automate the process of training a large selection of candidate models. If you can refine your metabolomics as a $y = f(x)$ format, you can try AutoML to build a fine machine learning for prediction purpose. Here we use H2O/tinymodel as the AutoML platform.
+
+```{r h2o}
+path <- system.file("demodata/untarget", package = "rmwf")
+files <- list.files(path,recursive = T,full.names = T)
+
+# demo data from MTBLS28 https://www.ebi.ac.uk/metabolights/MTBLS28
+MTBLS28 <- enviGCMS::getmzrtcsv(files[grepl('MTBLS28pos',files)])
+library('h2o')
+lv <- ifelse(grepl('Control',MTBLS28$group$sample_group),'control','case')
+trainIndex <- sample(1:1005,700)
+train <- MTBLS28$data[, trainIndex]
+train <- cbind.data.frame(Y=lv[trainIndex],t(train))
+test  <- MTBLS28$data[,-trainIndex]
+test  <- cbind.data.frame(Y=lv[-trainIndex],t(test))
+
+y = 'Y'
+pred = setdiff(names(train), y)
+#convert variables to factors
+train[,y] = as.factor(train[,y])
+test[,y] = as.factor(test[,y])
+
+invisible(h2o.init())
+train_h = as.h2o(train)
+test_h = as.h2o(test)
+# Run AutoML for 20 base models
+aml = h2o.automl(x = pred, y = y,
+                  training_frame = train_h,
+                  max_models = 20,
+                  seed = 1
+                 )
+# AutoML Leaderboard
+lb = aml@leaderboard
+lb
+# prediction result on test data
+prediction = h2o.predict(aml@leader, test_h[,-5]) %>%
+                         as.data.frame()
+# create a confusion matrix
+caret::confusionMatrix(test$Y, prediction$predict)
+# close h2o connection
+h2o.shutdown(prompt = F)
+```
+
+Here is the python version:
+
+```{python}
+import h2o
+from h2o.automl import H2OAutoML
+
+# Start the H2O cluster (locally)
+h2o.init()
+
+# Import a sample binary outcome train/test set into H2O
+train = h2o.import_file("train.csv")
+test = h2o.import_file("test.csv")
+
+# Identify predictors and response
+x = train.columns
+y = "Y"
+x.remove(y)
+# For binary classification, response should be a factor
+train[y] = train[y].asfactor()
+test[y] = test[y].asfactor()
+
+# Run AutoML for 20 base models
+aml = H2OAutoML(max_models=20, seed=1)
+aml.train(x=x, y=y, training_frame=train)
+
+# View the AutoML Leaderboard
+lb = aml.leaderboard
+lb.head(rows=lb.nrows)  
+aml.leader
+preds = aml.predict(test)
+exa = aml.explain(test)
+va_plot = aml.varimp_heatmap()
+```

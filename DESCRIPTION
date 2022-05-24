@@ -13,4 +13,4 @@ Depends: R (>= 3.5.0)
 biocViews:
 Imports: jsonlite
 LazyData: true
-RoxygenNote: 7.1.1
+RoxygenNote: 7.2.0
