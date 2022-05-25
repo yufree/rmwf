@@ -4,9 +4,3 @@ test
 ^\.httr-oauth$
 zzz
 demo
-data/srmneic.rda
-data/srmeic.rda
-man/srmeic.Rd
-man/srmneic.Rd
-inst/demodata/untarget/MTBLS28posmzrt.csv
-inst/demodata/untarget/MTBLS28negmzrt.csv
