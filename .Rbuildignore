@@ -2,6 +2,7 @@
 ^\.Rproj\.user$
 test
 ^\.httr-oauth$
+.github
 zzz
 demo
 data/srmneic.rda
