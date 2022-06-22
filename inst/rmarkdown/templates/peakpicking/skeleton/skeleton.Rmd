@@ -232,16 +232,14 @@ Here we use venn diagram to compare the results from IPO, Autotuner, and default
 
 ```{r}
 # align the peaks list
-re <- getcompare(mzrt,mzrt2,mzrt3)
+re <- enviGCMS::getcompare(mzrt,mzrt2,mzrt3)
 ipo <- paste0(round(re[[1]]$mz,4),'@',round(re[[1]]$rt,1))
 autotuner <- paste0(round(re[[2]]$mz,4),'@',round(re[[2]]$rt,1))
 default <- paste0(round(re[[3]]$mz,4),'@',round(re[[3]]$rt,1))
 compare <- fromList(list(ipo,autotuner,default))
-# library(UpSetR)
-# upset(compare, order.by = "freq",nsets = 3)
-# generate venn diagram
-library(venn)
-venn::venn(compare,snames = c('ipo','autotuner','default'))
+library(UpSetR)
+compare <- fromList(list(ipo=ipo,autotuner=autotuner,default=default))
+upset(compare, order.by = "freq",nsets = 3)
 # show the peaks coverage
 par(mfrow = c(1,3))
 plot(mzrt$mz~mzrt$rt, pch = 19, col = 'black',main = 'IPO')

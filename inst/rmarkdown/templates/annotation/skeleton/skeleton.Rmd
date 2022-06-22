@@ -333,6 +333,41 @@ unique(anno2$name)
 enviGCMS::plotanno(anno3)
 ```
 
+### Rformassspectrometry
+
+```{r eval=FALSE}
+# input data
+fl <- list.files('data/dda/','*.mzML',full.names = T,recursive = T)
+# read in data and extract ms/ms spectra
+std_data <- readMSData(fl, mode = "onDisk")
+cwp <- CentWaveParam(snthresh = 10, prefilter = c(3, 4000), ppm = 10,
+                     peakwidth = c(2, 8), integrate = 2)
+std_data <- findChromPeaks(std_data, param = cwp)
+std_data <- refineChromPeaks(
+    std_data, MergeNeighboringPeaksParam(expandRt = 3))
+
+std_spectra <- chromPeakSpectra(std_data, return.type = "Spectra")
+#' Peak refinement
+#' Get the chromatographic peaks and add a column with the peak_id
+low_int <- function(x, ...) {
+    x > max(x, na.rm = TRUE) * 0.05
+}
+#' Remove peaks with an intensity below 5% of BPI
+std_spectra <- filterIntensity(std_spectra, intensity = low_int)
+
+#' Remove peaks with less than 3 peaks
+std_spectra <- std_spectra[lengths(std_spectra) > 2]
+# using hmdb local db
+data("hmdb5")
+has_mz <- containsMz(hmdb5, mz = unique(std_spectra$precursorMz)[order(unique(std_spectra$precursorMz))], ppm = 10)
+hmdb2 <- hmdb5[has_mz]
+spectra_match <- matchSpectra(
+    std_spectra, hmdb2,
+    param = CompareSpectraParam(ppm = 10, requirePrecursor = FALSE))
+spectra_match
+```
+
+
 # MS1 coupled with MS2 (optional)
 
 You can also use peaks list after the removal of redundant peaks to collect MS2 data. Then link them together by the following code.

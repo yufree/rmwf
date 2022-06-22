@@ -1,6 +1,6 @@
 Package: rmwf
 Title: Reproducilble Metabolomics WorkFlow
-Version: 0.1.1
+Version: 0.1.2
 Authors@R: 
     person(given = "Miao",
            family = "Yu",
@@ -11,6 +11,21 @@ License: GPL (>= 3)
 Encoding: UTF-8
 Depends: R (>= 3.5.0)
 biocViews:
-Imports: jsonlite
+Imports: jsonlite,
+        igraph,
+        IPO,
+        rfigshare,
+        stringr,
+        UpSetR,
+        enviGCMS,
+        pmd,
+        GO.db
+Remotes: KujawinskiLaboratory/Autotuner,
+        cbroeckl/RAMClustR,
+        omegahat/XMLSchema,
+        cran/SSOAP,
+        yufree/xMSannotator,
+        c-ruttkies/MetFragR/metfRag,
+        rformassspectrometry/MetaboAnnotation
 LazyData: true
 RoxygenNote: 7.2.0
