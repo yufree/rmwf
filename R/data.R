@@ -98,9 +98,3 @@
 #' @usage data(monams1)
 #' @format A list with compounds from MoNA LC-MS spectra database for GC-MS simulation
 "monams1"
-
-#' HMDB MS2 spectra database
-#' @docType data
-#' @usage data(hmdb5)
-#' @format HMDB 5.0 MS/MS spectra object for MS2 annotation. Download from https://github.com/jorainer/MetaboAnnotationTutorials/releases
-"hmdb5"

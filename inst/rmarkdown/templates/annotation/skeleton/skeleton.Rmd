@@ -335,13 +335,17 @@ enviGCMS::plotanno(anno3)
 
 ### Rformassspectrometry
 
+This part will read raw data and extract MS2 spectra as mgf file for database annotation.
+
 ```{r eval=FALSE}
+library(xcms)
+library(CompoundDb)
+library(MetaboAnnotation)
 # input data
 fl <- list.files('data/dda/','*.mzML',full.names = T,recursive = T)
 # read in data and extract ms/ms spectra
 std_data <- readMSData(fl, mode = "onDisk")
-cwp <- CentWaveParam(snthresh = 10, prefilter = c(3, 4000), ppm = 10,
-                     peakwidth = c(2, 8), integrate = 2)
+cwp <- CentWaveParam(snthresh = 10, prefilter = c(3, 4000), ppm = 5, peakwidth = c(5, 60), integrate = 2)
 std_data <- findChromPeaks(std_data, param = cwp)
 std_data <- refineChromPeaks(
     std_data, MergeNeighboringPeaksParam(expandRt = 3))
@@ -357,14 +361,197 @@ std_spectra <- filterIntensity(std_spectra, intensity = low_int)
 
 #' Remove peaks with less than 3 peaks
 std_spectra <- std_spectra[lengths(std_spectra) > 2]
-# using hmdb local db
-data("hmdb5")
-has_mz <- containsMz(hmdb5, mz = unique(std_spectra$precursorMz)[order(unique(std_spectra$precursorMz))], ppm = 10)
-hmdb2 <- hmdb5[has_mz]
-spectra_match <- matchSpectra(
+
+library(MsBackendMgf)
+# Export the spectra to a MGF file for matching
+export(std_spectra, backend = MsBackendMgf(), file = "test.mgf")
+```
+
+Create HMDB and MoNa database for annotation.
+
+```{r hmdb}
+library(CompoundDb)
+cmps <- compound_tbl_sdf('structures.sdf')
+spctra <- msms_spectra_hmdb('hmdb_experimental_msms_spectra/')
+metad <- make_metadata(source = "HMDB", url = "http://www.hmdb.ca",
+                       source_version = "5.0", source_date = "2022-06",
+                       organism = "Hsapiens")
+db_file <- createCompDb(cmps, metadata = metad, msms_spectra = spctra,
+                        path = '.')
+```
+
+```{r mona}
+library(CompoundDb)
+mona_data <- import_mona_sdf('MoNA-export-LC-MS-MS_Positive_Mode.sdf')
+metad <- make_metadata(source = "MoNa",
+                       url = "http://mona.fiehnlab.ucdavis.edu/",
+                       source_version = "2022.06", source_date = "2022-06",
+                       organism = "UnspecifiedPOS")
+mona_db_file <- createCompDb(mona_data$compound, metadata = metad,
+                             msms_spectra = mona_data$msms_spectrum,
+                             path = '.')
+```
+
+Annotation via dot product.
+
+```{r}
+std_spectra <- Spectra('test.mgf',source = MsBackendMgf())
+cdb <- CompoundDb::CompDb('CompDb.Hsapiens.HMDB.5.0.sqlite')
+hmdb <- Spectra(cdb)
+has_mz <- containsMz(hmdb, mz = unique(std_spectra$precursorMz)[order(unique(std_spectra$precursorMz))], ppm = 10)
+hmdb2 <- hmdb[has_mz]
+system.time(spectra_match <- matchSpectra(
     std_spectra, hmdb2,
-    param = CompareSpectraParam(ppm = 10, requirePrecursor = FALSE))
+    param = CompareSpectraParam(ppm = 10, requirePrecursor = FALSE,THRESHFUN = function(x) which(x >= 0.7))))
 spectra_match
+res <- spectraData(spectra_match, columns = c("rtime", "precursorMz",               "target_compound_id","target_precursorMz", "score"))
+res <- res[!is.na(res$score),]
+write.csv(res,'testmatch.csv')
+```
+
+### matchms
+
+CosineGreedy matching algorithm
+
+```{r}
+library(reticulate)
+```
+
+```{python}
+import numpy as np
+import pandas as pd
+import os
+import tqdm
+from tqdm.contrib import tzip
+from matchms.importing import load_from_mgf,load_from_msp
+from matchms.filtering import default_filters, normalize_intensities, add_precursor_mz,require_minimum_number_of_peaks
+from matchms import calculate_scores
+from matchms.similarity import CosineGreedy,PrecursorMzMatch
+# Download msp file from MassBank of North America repository at https://mona.fiehnlab.ucdavis.edu/
+file_msp = "MassBank_NIST.msp"
+spectrumsmb = list(load_from_msp(file_msp))
+# 90190
+spectrumsmbs = []
+for spectrum in spectrumsmb:
+  if spectrum.get('precursor_mz') is not None:
+    spectrumsmbs.append(spectrum)
+# 65423
+# load files
+file = list(load_from_mgf("test.mgf"))
+spectrums = []
+for spectrum in file:
+    spectrum = default_filters(spectrum)
+    spectrum = normalize_intensities(spectrum)
+    spectrum = add_precursor_mz(spectrum)
+    spectrum = require_minimum_number_of_peaks(spectrum, n_required=3)
+    spectrums.append(spectrum)
+# read mzML
+import glob
+spectrums = []
+files = glob.glob('*.mzML')
+for file in files:
+  filex = list(load_from_mzml(file))
+  for spectrum in filex:
+    spectrum = default_filters(spectrum)
+    spectrum = normalize_intensities(spectrum)
+    spectrum = select_by_intensity(spectrum, intensity_from=0.05)
+    spectrum = select_by_mz(spectrum, mz_from=10, mz_to=1000)
+    spectrum = require_minimum_number_of_peaks(spectrum, n_required=3)
+    spectrums.append(spectrum)
+# precursor match
+similarity_score = PrecursorMzMatch(tolerance=5.0, tolerance_type="Dalton")
+scores = calculate_scores(spectrumsmbs, spectrums, similarity_score)
+# output result as csv
+indices = np.where(np.asarray(scores.scores))
+idx_row, idx_col = indices
+cosinegreedy = CosineGreedy()
+data = []
+for (x,y) in tzip(idx_row,idx_col):
+  msms_score, n_matches = cosinegreedy.pair(spectrumsmbs[x],spectrums[y])[()]
+  if (msms_score>0.7) & (n_matches>2):
+    data.append({'msms_score':msms_score,
+    'matched_peaks':n_matches,
+    'feature_id': spectrums[y].get("compound_name"),
+    'feature_mz': spectrums[y].get("precursor_mz"),
+    'feature_rt': spectrums[y].get("retention_time"),
+    'reference_id':spectrumsmbs[x].get("compound_name")})
+df = pd.DataFrame(data)
+df.to_csv('result.csv', sep = ',')
+```
+
+### spec2vec
+
+spec2vec algorithm
+
+```{python}
+import os
+import numpy as np
+import pandas as pd
+import tqdm
+from tqdm.contrib import tzip
+from matchms.importing import load_from_mgf, load_from_msp
+from matchms.filtering import default_filters, normalize_intensities, add_precursor_mz, select_by_intensity, select_by_mz,require_minimum_number_of_peaks
+from matchms.similarity import PrecursorMzMatch
+from spec2vec import SpectrumDocument
+# new data
+spectrums = list(load_from_mgf('test.mgf'))
+spectrum2 = []
+for spectrum in spectrums:
+    spectrum = default_filters(spectrum)
+    spectrum = normalize_intensities(spectrum)
+    spectrum = select_by_intensity(spectrum, intensity_from=0.05)
+    spectrum = select_by_mz(spectrum, mz_from=10, mz_to=1000)
+    spectrum = require_minimum_number_of_peaks(spectrum, n_required=3)
+    if spectrum.get('precursor_mz') is not None:
+        spectrum2.append(spectrum)
+
+# train new model
+file_msp = "MassBank_NIST.msp"
+spectrumsmb = list(load_from_msp(file_msp))
+# 90190
+spectrumsmbs = []
+for spectrum in spectrumsmb:
+  spectrum = normalize_intensities(spectrum)
+  if spectrum.get('precursor_mz') is not None:
+    spectrumsmbs.append(spectrum)
+submb = spectrumsmbs[1:10]
+
+import matchms.filtering as msfilters
+from spec2vec.model_building import train_new_word2vec_model
+
+spectrum_documents = [SpectrumDocument(s, n_decimals=2) for s in spectrumsmbs]
+from spec2vec.model_building import train_new_word2vec_model
+model_file = "tutorial_model.model"
+model = train_new_word2vec_model(spectrum_documents, iterations=[25], filename=model_file,
+                                 workers=2, progress_logger=True)
+spec2vec_similarity = Spec2Vec(model=model,
+                               intensity_weighting_power=0.5,
+                               allowed_missing_percentage=5.0)
+
+import gensim
+from matchms import calculate_scores
+model = gensim.models.Word2Vec.load('tutorial_model.model')
+from spec2vec import Spec2Vec
+spec2vec_similarity = Spec2Vec(model=model,
+                               intensity_weighting_power=0.5,
+                               allowed_missing_percentage=5.0)
+similarity_score = PrecursorMzMatch(tolerance=5.0, tolerance_type="Dalton")
+scores = calculate_scores(spectrumsmbs, spectrums, similarity_score)
+
+indices = np.where(np.asarray(scores.scores))
+idx_row, idx_col = indices
+data = []
+for (x,y) in tzip(idx_row,idx_col):
+  msms_score = spec2vec_similarity.pair(spectrumsmbs[x],spectrum2[y])
+  if (msms_score>0.7) :
+      data.append({'msms_score':msms_score,
+      'feature_id': spectrum2[y].get("compound_name"),
+      'feature_mz': spectrum2[y].get("precursor_mz"),
+      'feature_rt': spectrum2[y].get("retention_time"),
+      'reference_id':spectrumsmbs[x].get("compound_name")})
+
+df = pd.DataFrame(data)
+df.to_csv('result2.csv', sep = ',')
 ```
 
 
