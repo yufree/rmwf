@@ -182,7 +182,7 @@ files <- list.files(path,recursive = T,full.names = T)
 
 # demo data from MTBLS28 https://www.ebi.ac.uk/metabolights/MTBLS28
 MTBLS28 <- enviGCMS::getmzrtcsv(files[grepl('MTBLS28pos',files)])
-library('h2o')
+
 lv <- ifelse(grepl('Control',MTBLS28$group$sample_group),'control','case')
 trainIndex <- sample(1:1005,700)
 train <- MTBLS28$data[, trainIndex]
@@ -196,6 +196,7 @@ pred = setdiff(names(train), y)
 train[,y] = as.factor(train[,y])
 test[,y] = as.factor(test[,y])
 
+library('h2o')
 invisible(h2o.init())
 train_h = as.h2o(train)
 test_h = as.h2o(test)
@@ -203,16 +204,21 @@ test_h = as.h2o(test)
 aml = h2o.automl(x = pred, y = y,
                   training_frame = train_h,
                   max_models = 20,
-                  seed = 1
+                  seed = 42
                  )
 # AutoML Leaderboard
-lb = aml@leaderboard
+lb <- h2o.get_leaderboard(object = aml, extra_columns = "ALL")
 lb
 # prediction result on test data
-prediction = h2o.predict(aml@leader, test_h[,-5]) %>%
-                         as.data.frame()
+prediction = h2o.predict(aml@leader, test_h[,-5])
 # create a confusion matrix
-caret::confusionMatrix(test$Y, prediction$predict)
+caret::confusionMatrix(test$Y, as.data.frame(prediction)$predict)
+# variable importance
+h2o.varimp_heatmap(aml)
+## no vip for stacked model
+m <- h2o.get_best_model(aml)
+m <- h2o.getModel("GBM_1_AutoML_2_20220721_115832")
+h2o.varimp(m)
 # close h2o connection
 h2o.shutdown(prompt = F)
 ```
