@@ -210,11 +210,11 @@ aml = h2o.automl(x = pred, y = y,
 lb <- h2o.get_leaderboard(object = aml, extra_columns = "ALL")
 lb
 # prediction result on test data
-prediction = h2o.predict(aml@leader, test_h[,-5])
+prediction = h2o.predict(aml@leader, test_h[,-1])
 # create a confusion matrix
 caret::confusionMatrix(test$Y, as.data.frame(prediction)$predict)
-# variable importance
-h2o.varimp_heatmap(aml)
+# explain model
+h2o.explain(aml)
 ## no vip for stacked model
 m <- h2o.get_best_model(aml)
 m <- h2o.getModel("GBM_1_AutoML_2_20220721_115832")
