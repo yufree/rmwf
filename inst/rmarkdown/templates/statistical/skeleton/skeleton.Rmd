@@ -256,3 +256,39 @@ preds = aml.predict(test)
 exa = aml.explain(test)
 va_plot = aml.varimp_heatmap()
 ```
+
+Here is the autogluon version:
+
+```{r}
+reticulate::use_condaenv('autogluon')
+```
+
+```{python}
+from autogluon.tabular import TabularDataset, TabularPredictor
+train_data = TabularDataset('train.csv')
+label = 'Y'
+save_path = 'agModels-predictClass'
+predictor = TabularPredictor(label=label, path=save_path).fit(train_data)
+test_data = TabularDataset('test.csv')
+y_test = test_data[label]
+test_data_nolab = test_data.drop(columns=[label])
+predictor = TabularPredictor.load(save_path)  # unnecessary, just demonstrates how to load previously-trained predictor from file
+
+y_pred = predictor.predict(test_data_nolab)
+print("Predictions:  \\n", y_pred)
+perf = predictor.evaluate_predictions(y_true=y_test, y_pred=y_pred, auxiliary_metrics=True)
+predictor.leaderboard(test_data, silent=True)
+
+time_limit = 3600  # for quick demonstration only, you should set this to longest time you are willing to wait (in seconds)
+metric = 'roc_auc'  # specify your evaluation metric here
+predictor = TabularPredictor(label, eval_metric=metric).fit(train_data, time_limit=time_limit, presets='best_quality')
+predictor.leaderboard(test_data, silent=True)
+predictor.feature_importance(test_data)
+
+# rule based
+predictor2 = TabularPredictor(label='Y')
+predictor2.fit(train_data, presets='interpretable')
+predictor2.leaderboard()
+
+```
+
