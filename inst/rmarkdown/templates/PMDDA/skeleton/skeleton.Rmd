@@ -79,11 +79,12 @@ library(IPO)
 library(xcms)
 peakpickingParameters <- getDefaultXcmsSetStartingParams('centWave')
 # Uncomment the following line to use your own data(suggested 3-5 pooled QC samples)
-# path <- 'path/to/your/files'
+# path <- 'path/to/your/QCfiles'
+# file <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
 # change to 5 for obitrap
 peakpickingParameters$ppm <- 10
 resultPeakpicking <- 
-  optimizeXcmsSet(files = files[c(7,9,10)], 
+  optimizeXcmsSet(files = files[sample(seq_along(files),3)], 
                   params = peakpickingParameters,
                   plot = F,
                   subdir = NULL)
