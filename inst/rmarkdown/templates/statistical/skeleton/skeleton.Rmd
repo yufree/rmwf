@@ -289,6 +289,4 @@ predictor.feature_importance(test_data)
 predictor2 = TabularPredictor(label='Y')
 predictor2.fit(train_data, presets='interpretable')
 predictor2.leaderboard()
-
 ```
-
