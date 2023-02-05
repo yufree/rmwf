@@ -15,7 +15,7 @@ A data frame with compounds from hmdb and refmet including name, InChIKey, chemi
   }
 }
 \usage{
-data(hr)
+hr
 }
 \description{
 A data frame with compounds from hmdb and refmet

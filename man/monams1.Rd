@@ -8,7 +8,7 @@
 A list with compounds from MoNA LC-MS spectra database for GC-MS simulation
 }
 \usage{
-data(monams1)
+monams1
 }
 \description{
 A list containing MoNA LC-MS spectra database

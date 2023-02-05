@@ -8,7 +8,7 @@
 xcmsset object
 }
 \usage{
-data(srmxset)
+srmxset
 }
 \description{
 Demo xcmsset object

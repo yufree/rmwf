@@ -8,7 +8,7 @@
 mzrt list object
 }
 \usage{
-data(mzrt)
+mzrt
 }
 \description{
 Demo mzrt list object

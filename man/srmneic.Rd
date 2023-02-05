@@ -8,7 +8,7 @@
 xcmseic object
 }
 \usage{
-data(srmneic)
+srmneic
 }
 \description{
 Demo xcmseic object for negative mode

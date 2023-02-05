@@ -14,7 +14,7 @@ A list containing HMDB orbitrap MS/MS data with peaks larger than 10 percentage 
   }
 }
 \usage{
-data(orb)
+orb
 }
 \description{
 A list containing HMDB orbitrap MS/MS data with peaks larger than 10 percentage for PMD annotation

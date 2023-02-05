@@ -8,7 +8,7 @@
 xcmseic object
 }
 \usage{
-data(srmeic)
+srmeic
 }
 \description{
 Demo xcmseic object

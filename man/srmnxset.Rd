@@ -8,7 +8,7 @@
 xcmsset object
 }
 \usage{
-data(srmnxset)
+srmnxset
 }
 \description{
 Demo xcmsset object for negative mode

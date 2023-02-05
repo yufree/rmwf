@@ -8,7 +8,7 @@
 mzrt list object
 }
 \usage{
-data(mzrtn)
+mzrtn
 }
 \description{
 Demo mzrt list object for negative mode

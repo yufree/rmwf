@@ -8,7 +8,7 @@
 ipo parameters
 }
 \usage{
-data(paran)
+paran
 }
 \description{
 Demo ipo parameters object for negative mode

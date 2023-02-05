@@ -11,9 +11,8 @@ License: GPL (>= 3)
 Encoding: UTF-8
 Depends: R (>= 3.5.0)
 biocViews:
-Imports: jsonlite,
-        igraph,
-        IPO,
+Additional_repositories: https://yufree.github.io/drat
+Suggests: IPO,
         rfigshare,
         stringr,
         UpSetR,
@@ -22,12 +21,15 @@ Imports: jsonlite,
         GO.db,
         MsBackendMgf,
         MetaboAnnotation,
-        CompoundDb
-Remotes: KujawinskiLaboratory/Autotuner,
-        cbroeckl/RAMClustR,
-        omegahat/XMLSchema,
-        cran/SSOAP,
-        yufree/xMSannotator,
-        c-ruttkies/MetFragR/metfRag
+        CompoundDb,
+        Autotuner,
+        XMLSchema,
+        SSOAP,
+        xMSannotator,
+        RAMClustR,
+        metfRag,
+        igraph
+Imports: jsonlite
 LazyData: true
-RoxygenNote: 7.2.0
+LazyDataCompression: xz
+RoxygenNote: 7.2.3

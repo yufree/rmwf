@@ -8,7 +8,7 @@
 A list with compounds from hmdb for GC-MS simulation
 }
 \usage{
-data(hmdbcms)
+hmdbcms
 }
 \description{
 A list containing HMDB GC-EI-MS spectra database

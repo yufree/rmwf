@@ -14,7 +14,7 @@ A list containing HMDB qqq MS/MS data with peaks larger than 10 percentage for P
   }
 }
 \usage{
-data(qqq)
+qqq
 }
 \description{
 A list containing HMDB qqq MS/MS data with peaks larger than 10 percentage for PMD annotation

@@ -8,7 +8,7 @@
 ipo parameters
 }
 \usage{
-data(para)
+para
 }
 \description{
 Demo ipo parameters object

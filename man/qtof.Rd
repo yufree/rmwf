@@ -14,7 +14,7 @@ A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for 
   }
 }
 \usage{
-data(qtof)
+qtof
 }
 \description{
 A list containing HMDB qtof MS/MS data with peaks larger than 10 percentage for PMD annotation
