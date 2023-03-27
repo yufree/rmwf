@@ -2,7 +2,11 @@
 title: "Reactomics Analysis"
 author: "Miao Yu"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: output_format
+output:
+  html_document:
+    df_print: paged
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}

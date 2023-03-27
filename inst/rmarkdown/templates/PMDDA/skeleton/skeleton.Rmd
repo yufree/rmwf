@@ -58,13 +58,25 @@ setwd('..')
 
 The data could be subset by [msconvert](https://proteowizard.sourceforge.io/tools.shtml) to avoid peaks with low quality(co-elution and column washing phase). You need to install [docker](https://www.docker.com/) and pull the docker image from msconvert.The following code will subset the data by retention time from 30 to 930s. More details can be found [online](https://proteowizard.sourceforge.io/tools/msconvert.html).
 
-```{bash eval=FALSE}
+```{bash eval = FALSE}
 docker pull chambm/pwiz-skyline-i-agree-to-the-vendor-licenses
 for f in $(basename path/*.mzML)
 do
-  docker run -it --rm -e WINEDEBUG=-all -v path/:/data chambm/pwiz-skyline-i-agree-to-the-vendor-licenses wine msconvert /data/$f --filter "scanTime [30,930]"
+  docker run -it --rm -e WINEDEBUG=-all -v path/:/data chambm/pwiz-skyline-i-agree-to-the-vendor-licenses wine msconvert --32 --zlib --filter "scanTime [30,930]" --filter "peakPicking true 1-" --filter "zeroSamples removeExtra" /data/$f
 done
 ```
+
+If you use singularity, you might need extra parameters to run this image.
+
+```{bash eval = FALSE}
+singularity pull docker://chambm/pwiz-skyline-i-agree-to-the-vendor-licenses
+
+for f in $(basename path/*.mzML)
+do
+  singularity exec --cleanenv -B ~:/mywineprefix --writable-tmpfs pwiz-skyline-i-agree-to-the-vendor-licenses_latest.sif mywine msconvert --32 --zlib --filter "scanTime [30,930]" --filter "peakPicking true 1-" --filter "zeroSamples removeExtra" /data/$f
+done
+```
+
 
 # Optimization of XCMS
 
