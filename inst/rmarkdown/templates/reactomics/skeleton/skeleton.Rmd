@@ -18,7 +18,7 @@ sessionInfo()
 # Demo data
 
 ```{r}
-path <- system.file("demodata/untarget", package = "rmwf")
+path <- system.file("extdata/untarget", package = "rmwf")
 files <- list.files(path,recursive = T,full.names = T)
 ST000560pos <- enviGCMS::getmzrtcsv(files[grepl('ST000560mzrt',files)])
 ```
@@ -107,7 +107,7 @@ Here we could see the correlation among those peaks as network. 109 peaks have r
 ## Build the PMD network
 
 ```{r}
-peaksda <- pmd::getsda(hfp,freqcutoff = 8)
+peaksda <- pmd::getsda(hfp2,freqcutoff = 8)
 df <- peaksda$sda
 df$from <- paste0('M',round(df$ms1,4),'T',round(df$rt1,1))
 df$to <- paste0('M',round(df$ms2,4),'T',round(df$rt2,1))
@@ -134,7 +134,7 @@ Here we need to define a frequency cutoff. With the increasing number of high fr
 We could combine the PMD relation with correlation together to show the quantitative reactomics networks within the samples. Those metabolites could be quantitatively checked among different samples.
 
 ```{r}
-peaksda <- pmd::getsda(peak,freqcutoff = 8,corcutoff = 0.6)
+peaksda <- pmd::getsda(hfp2,freqcutoff = 8,corcutoff = 0.6)
 df <- peaksda$sda
 df$from <- paste0('M',round(df$ms1,4),'T',round(df$rt1,1))
 df$to <- paste0('M',round(df$ms2,4),'T',round(df$rt2,1))
@@ -157,7 +157,7 @@ legend("topright",bty = "n",
 If one compound have no relation with other metabolites, it might come from environment. On the other hand, endogenous compounds would always show PMD with other compounds. In this case, we could use such phenomena to check the metabolites' source. The largest network cluster should be endogenous network and If one metabolite is located in a network with nodes lower than 3, few reactions could be related and such compounds should be from environment.
 
 ```{r}
-peaksda <- pmd::getsda(peak,freqcutoff = 8)
+peaksda <- pmd::getsda(hfp2,freqcutoff = 8)
 df <- peaksda$sda
 df$from <- paste0('M',round(df$ms1,4),'T',round(df$rt1,1))
 df$to <- paste0('M',round(df$ms2,4),'T',round(df$rt2,1))

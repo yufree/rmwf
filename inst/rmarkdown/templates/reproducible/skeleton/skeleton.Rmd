@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE,eval = F)
 # Database within rmwf package
 
 ```{r}
-path <- system.file("demodata/pmd", package = "rmwf")
+path <- system.file("extdata/pmd", package = "rmwf")
 files <- list.files(path,recursive = T,full.names = T)
 
 # pmd related dataset
@@ -25,7 +25,7 @@ tbbpa <- enviGCMS::getmzrtcsv(files[grepl('tbbpa',files)])
 # demo data from in vivo SPME https://www.sciencedirect.com/science/article/pii/S0003267018313047
 spme <- enviGCMS::getmzrtcsv(files[grepl('demomzrt',files)])
 
-path <- system.file("demodata/untarget", package = "rmwf")
+path <- system.file("extdata/untarget", package = "rmwf")
 files <- list.files(path,recursive = T,full.names = T)
 
 # demo data from MTBLS28 https://www.ebi.ac.uk/metabolights/MTBLS28
@@ -71,7 +71,7 @@ DST001169neg <- enviGCMS::getmzrtcsv(files[grepl('DST001169neg',files)])
 ST000560pos <- enviGCMS::getmzrtcsv(files[grepl('ST000560mzrt',files)])
 ST000560neg <- enviGCMS::getmzrtcsv(files[grepl('ST000560neg',files)])
 
-path <- system.file("demodata/target", package = "rmwf")
+path <- system.file("extdata/target", package = "rmwf")
 files <- list.files(path,recursive = T,full.names = T)
 
 # Targeted data
