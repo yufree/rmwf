@@ -1,0 +1,552 @@
+---
+title: "MSI"
+author: "Miao Yu"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    df_print: paged
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,eval = FALSE)
+```
+
+## Raw data format
+
+This part will use `timsconvert` to process raw data(.d files) from instrument to open source format(imzML). You should install timsconvert from their [website](https://github.com/gtluu/timsconvert). Then convert the file using the following code:
+
+```{bash}
+conda activate timsconvert
+# change PATHOFRAWDATA.d to your raw data file
+# change PATHOFIMZMLDATA as your output file path
+python /opt/timsconvert/bin/run.py --input PATHOFRAWDATA.d --outdir PATHOFIMZMLDATA --exclude_mobility --compression 'none' --encoding 32
+```
+
+
+## Data input
+
+This part is using `Cardinal` package to import imzml data.
+
+```{r}
+library(Cardinal)
+# uncomment the following two lines and change the core number according to your computational resources
+# setCardinalBPPARAM(BPPARAM = MulticoreParam(30))
+# setCardinalNumBlocks(30)
+
+# Change IMZMLFILEPATH to your imzML file path and you might set mass range
+t <- readImzML('IMZMLFILEPATH',resolution = 20,units = 'ppm')
+
+# get the coords of imaging pixels
+xy <- coord(t)
+
+# refine the imaging area for certain sample(s)
+pid <- pixels(t, x <= 2000, y<800)
+tsub <- t[,pid]
+```
+
+## Data processing
+
+This part will extract all the ions for imaging with normalization (Default method is "Total Ion Chromatogram"), signal smoothing, baseline reducing, peak picking, alignment, and peak filtering. This step will take a long time and use high-memory node with multiple cores(30). For one slide with four sample, it will need eight hours on high-memory node of HPC. Please save the processed object for the following data analysis. 
+
+```{r}
+tsub <- tsub %>%
+    # normalization
+    normalize(method='tic') %>%
+    smoothSignal() %>%
+    reduceBaseline() %>%
+    peakPick() %>%
+    peakAlign() %>%
+    # default 1%, keep ions appearred in at least 1% pixels
+    peakFilter() %>%
+    process()
+
+saveRDS(tsub,'processed.RDS')
+```
+
+## PCA Segmentation
+
+This part will perform PCA on MSI intensity data and retain PCs with accumulated variances larger than 80% variance in the data. Then subset 10000 pixels and perform a cluster number optimization to find the best numbers of cluster by silhouette method. The final step is visualization of the segmentation
+
+```{r}
+one <- readRDS("processed.RDS")
+# extract imaging intensity data
+df <- t(iData(one))
+# bring the data into memory
+df <- df[]
+# perform PCA scale or not will strong influence the result, default FALSE
+# scale will loss macro structure
+# pca <- prcomp(df,scale. = T)
+pca <- prcomp(df)
+# calculate variances for each PC
+eigs <- pca$sdev^2
+# find the PC numbers with more than 80% variances in the data
+sum(eigs[1:4]) / sum(eigs)
+
+# extract PC by the number found in last step
+library(Cardinal)
+mse_peakref_pca <- PCA(one, ncomp=4)
+# extract PC data
+pc_scores <- DataFrame(resultData(mse_peakref_pca, 1, "scores"))
+# subset for cluster number optimization
+subdf <- pc_scores[sample(nrow(pc_scores),10000),]
+library(ClusterR)
+opt = Optimal_Clusters_KMeans(as.data.frame(subdf), max_clusters = 10, plot_clusters = T, criterion = 'silhouette',initializer = 'optimal_init', tol_optimal_init = 0.2)
+# use the optimized number for cluster
+km = KMeans_arma(as.matrix(pc_scores), clusters = 5, n_iter = 10, seed_mode = "random_subset", verbose = T, CENTROIDS = NULL)
+pr = predict_KMeans(as.matrix(pc_scores), km)
+# display the Segmentation
+xy <- coord(one)
+plot(xy$x,xy$y,col=pr,cex=0.001,pch=19)
+legend('top',legend = unique(pr),col=unique(pr),pch=19,cex=1)
+```
+
+## Differential analysis
+
+### for ions
+
+```{r}
+one <- readRDS("processed.RDS")
+# extract imaging intensity data
+df <- t(iData(one))
+# bring the data into memory
+df <- df[]
+# define pixel level groups
+xy$group <- c(rep('old',500000),rep('young',500000))
+library(genefilter)
+re <- colttests(df,factor(xy$group))
+
+# fold change
+fcall <- c()
+for (i in 1:2471){
+  t <- aggregate(df[,i],by=list(xy$group),mean)
+  fc <- t[1,2]/t[2,2]
+  fcall <- c(fcall,fc)
+}
+fcall[is.na(fcall)] <- 0
+re$adj <- p.adjust(re$p.value,'BH')
+
+# filter with p value and fold change
+sum(re$adj<0.05&!is.na(re$adj)&(fcall>1.5|fcall<0.67))/length(re$adj)
+```
+
+### for ion numbers
+
+```{r}
+xy$group <- c(rep('old',500000),rep('young',500000))
+dfx <- apply(df, 1, function(x) sum(x==0))
+dfx <- 2471-dfx
+xy$np <- dfx
+
+ggplot(xy,aes(np)) +
+  ggtitle('peak number for each pixel')+
+  geom_histogram(binwidth=1)+theme_bw()
+
+num <- apply(df,2,function(x) sum(x!=0))
+num <- data.frame(num=num)
+ggplot(num,aes(num)) +
+  ggtitle('pixel number for each peaks')+
+  geom_histogram()+theme_bw()
+
+ggplot(xy, aes(x = np, y = group)) + 
+  ggtitle('pixel number for different group')+
+  geom_density_ridges()+theme_bw()
+# t.test for pixel number
+for(i in c(1:length(unique(xy$group)))){
+  xyi <- xy[xy$cluster==unique(xy$group)[i],]
+  print(t.test(xyi$np~xyi$group))
+}
+```
+
+### for ion distance
+
+```{r}
+library(distances)
+# Check ion average distance for one group called dfyoung
+d2 <- d1 <- c()
+for(i in c(1:2471)){
+  xyi <- xy[dfyoung[,i]!=0,]
+  # set pixel number 0.5-30% of all pixels to ensure sparsity
+  if(nrow(xyi)>5000&nrow(xyi)<300000){
+    dt <- distances(xyi[,c(1,2)])
+    #d1 <- c(d1,median(dt))
+    d2 <- c(d2,mean(dt))
+  }else{
+    d2 <- c(d2,NA)
+  }
+}
+# Check ion average distance for one group called dfold
+d4 <- d3 <- c()
+for(i in c(1:2471)){
+  xyi <- xy[dfold[,i]!=0,]
+  # set pixel number 0.5-30% of all pixels to ensure sparsity
+  if(nrow(xyi)>5000&nrow(xyi)<300000){
+    dt <- distances(xyi[,c(1,2)])
+    #d1 <- c(d1,median(dt))
+    d4 <- c(d4,mean(dt))
+  }else{
+    d4 <- c(d4,NA)
+  }
+}
+# t test and visulization of differences
+xx <- cbind.data.frame(dis=c(d2,d4),group=c(rep('young',2471),rep('old',2471)))
+library(ggplot2)
+library(ggridges)
+xx <- xx[complete.cases(xx),]
+ggplot(xx, aes(dis,group)) +
+  geom_density_ridges()+theme_bw()
+
+t.test(xx$dis~xx$group)
+```
+
+
+## Anatomy registration
+
+### MSI2TIC
+
+This step will generate image for MSI with outline for registration purpose.
+
+```{r}
+library(Cardinal)
+one <- readRDS("processed.RDS")
+xy <- coord(one)
+# pixel by pixel for coords
+nxy <- cbind.data.frame(x=xy$x-min(xy$x)+1,y=xy$y-min(xy$y)+1)
+
+# define outline pixels
+outline <- 50
+# fill intensity
+tic <- summarizePixels(one, c(tic="mean"))
+nxy$i <- as.numeric(iData(tic))
+# add outline
+nnxy <- cbind.data.frame(x=xy$x-min(xy$x)+1+outline,y=xy$y-min(xy$y)+outline+1)
+write.csv(nnxy,'outline.csv')
+
+png("msitic.png", width = max(xy$x)-min(xy$x)+2*outline+1,height = max(xy$y)-min(xy$y)+2*outline+1)
+plot.new()
+par(mar=c(0,0,0,0))
+plot.window(xlim = c(-outline, max(nxy$x)+outline), ylim = c(-outline, max(nxy$y)+outline), xaxs = "i", yaxs = "i", asp = NA)
+points(nxy$x, nxy$y, pch = 16, col = nxy$i,cex=0.3)
+dev.off()
+```
+
+### Geojson2img
+
+This step will adjust geojson from QuPath annotation to the same scale with MSI and output image for registration.
+
+```{r}
+xy <- read.csv('outline.csv',row.names = 1)
+jsonpath <- "outline.geojson"
+geojson <- sf::st_read(jsonpath)
+coords <- sf::st_coordinates(geojson$geometry)
+width <- max(xy$x)-min(xy$x)+1
+height <- max(xy$y)-min(xy$y)+1
+outline <- 50
+rangew <- max(coords[,1])-min(coords[,1])+1
+rangeh <- max(coords[,2])-min(coords[,2])+1
+png("he.png", bg = "transparent",width = width+outline*2,height = height+outline*2)
+par(mar=c(0,0,0,0))
+plot(geojson$geometry,setParUsrBB=T,col = 'green',xlim=c(min(coords[,1])-rangew/width*outline,max(coords[,1])+rangew/width*outline),ylim=c(min(coords[,2])-rangeh/height*outline,max(coords[,2])+rangeh/height*outline))
+dev.off()
+```
+
+### Rotate image
+
+This step will rotate the image for registration.
+
+```{r}
+library(magick)
+new <- image_read("he.png")
+# rotate
+image_rotate(new, 180) %>% image_write("he.png")
+```
+
+### H&EMSIReg
+
+Use simpleITK for registration.
+
+```{r}
+# image_viewer <- ImageViewer()
+# image_viewer$SetApplication('/Applications/ITK-SNAP.app/Contents/MacOS/ITK-SNAP')
+alpha = 0.5
+library(SimpleITK)
+fixed_image <- ReadImage("outline.png", 'sitkFloat32')
+moving_image <- ReadImage("he.png", 'sitkFloat32')
+initial_transform <- CenteredTransformInitializer(fixed_image, 
+                                                  moving_image, 
+                                                  Euler2DTransform(), 
+                                                  "GEOMETRY")
+# initial image
+moving_resampled <- Resample(moving_image, fixed_image, initial_transform)
+registration_method <- ImageRegistrationMethod()
+# Similarity metric settings.
+registration_method$SetMetricAsMattesMutualInformation(numberOfHistogramBins=50)
+registration_method$SetMetricSamplingStrategy("RANDOM")
+registration_method$SetMetricSamplingPercentage(0.01)
+registration_method$SetInterpolator("sitkLinear")
+
+# Optimizer settings.
+registration_method$SetOptimizerAsGradientDescent(learningRate=1.0, numberOfIterations=100, convergenceMinimumValue=1e-6, convergenceWindowSize=10)
+registration_method$SetOptimizerScalesFromPhysicalShift()
+
+# Setup for the multi-resolution framework.            
+registration_method$SetShrinkFactorsPerLevel(shrinkFactors = c(4,2,1))
+registration_method$SetSmoothingSigmasPerLevel(smoothingSigmas=c(2,1,0))
+registration_method$SmoothingSigmasAreSpecifiedInPhysicalUnitsOn()
+
+# Don't optimize in-place, we would possibly like to run this cell multiple times.
+registration_method$SetInitialTransform(initial_transform, inPlace=FALSE)
+final_transform <- registration_method$Execute(fixed_image, moving_image)
+# generate aligned image
+moving_resampled <- Resample(moving_image, fixed_image, final_transform)
+WriteTransform(final_transform, "reg.tfm")
+# WriteImage(moving_resampled, 'age6align.tiff')
+# image_viewer$Execute((1-alpha)*fixed_image + alpha*moving_resampled)
+```
+
+### Coordsreg
+
+This step will convert coords by the registration.
+
+```{r}
+tf <- ReadTransform('reg.tfm')
+fixed_image <- ReadImage("outline.png", 'sitkFloat32')
+# this is the field coords
+coord_transform = SimpleITK::TransformToDisplacementFieldFilter()
+coord_transform$SetReferenceImage(fixed_image)
+coord_transform$SetOutputSpacing(fixed_image$GetSpacing())
+coord_transform$SetOutputOrigin(fixed_image$GetOrigin())
+coord_transform$SetSize(fixed_image$GetSize())
+displacement_field = coord_transform$Execute(tf)
+
+jsonpath <- "outline.geojson"
+library(sf)
+geojson <- sf::st_read(jsonpath)
+
+pixel <- 'outline.csv'
+xy <- read.csv(pixel,row.names = 1)
+
+changexy2 <- function(x){
+  coords <- st_coordinates(x)
+  mt <- coords[,c('X','Y')]
+  width <- max(xy$x)-min(xy$x)+1
+  height <- max(xy$y)-min(xy$y)+1
+  outline <- 50
+  rangew <- max(coords[,1])-min(coords[,1])+1
+  rangeh <- max(coords[,2])-min(coords[,2])+1
+  mt[,1] <- (mt[,1]-min(coords[,1])+1)*width/rangew+outline
+  mt[,2] <- (mt[,2]-min(coords[,2])+1)*height/rangeh+outline
+  mt[,1] <- width+2*outline - mt[,1]
+  mt[,2] <- height+2*outline - mt[,2]
+  fe <- split.data.frame(mt,coords[,'L2'])
+  nmt <- lapply(fe,function(x) list(t(apply(x,1,function(y) y+displacement_field$GetPixel(y)))))
+  nmt
+}
+# perform registration
+re <- changexy2(geojson$geometry)
+# remove wrong annotation
+sfobj <- st_sfc(st_multipolygon(re[-c(153,176,180,189,121)]))
+# get the surrounding pixel with 3 pixel as distance
+sfobjoutline <- st_buffer(sfobj, dist = 3)
+plot(sf::st_geometry(sfobj),setParUsrBB=T,col = 'green')
+# 18,106,122,147,170,175
+# 14,114,137,143,148
+# for(i in c(107:183)) st_sfc(st_multipolygon(re[i]))
+```
+
+### Anno2MSI
+
+This step will map the annotation back to MSI pixel.
+
+```{r}
+## MSI image2json
+pixel <- 'outline.csv'
+pixel_coords <- read.csv(pixel,row.names = 1)
+point <- st_cast(st_sfc(st_multipoint(as.matrix(pixel_coords),dim = 'XY')),"POINT")
+pixel_coords$i <- st_intersects(point, sfobj) %>% lengths > 0
+sum(pixel_coords$i)
+pixel_coords$b <- st_intersects(point, sfobjoutline) %>% lengths > 0
+sum(pixel_coords$b)
+
+num <- rep(NA,length(pixel_coords$x))
+sfobjt <- sfobj[[1]]
+for (i in c(1:length(sfobjt))){
+  x <- unlist(st_intersects(st_polygon(sfobjt[[i]]),point))
+  num[x] <- i
+}
+
+pixel_coords$num <- num
+
+sfobjbu <- sfobjoutline[[1]]
+for (i in c(1:length(sfobjbu))){
+  x <- unlist(st_intersects(st_polygon(sfobjbu[[i]]),point))
+  num[x] <- i
+}
+
+pixel_coords$numb <- num
+
+write.csv(pixel_coords,'anno.csv')
+```
+
+### MSI viz
+
+Display the annotated MSI region.
+
+```{r}
+anno <- read.csv('anno.csv',row.names = 1)
+annomsi <- one[,anno$i]
+rcc_pca <- PCA(annomsi, ncomp=70)
+pc_scores <- DataFrame(resultData(rcc_pca, 1, "scores"))
+library(ClusterR)
+opt = Optimal_Clusters_KMeans(as.data.frame(pc_scores), max_clusters = 10, plot_clusters = T, criterion = 'silhouette',initializer = 'optimal_init', tol_optimal_init = 0.2)
+km = KMeans_arma(as.matrix(pc_scores), clusters = 2, n_iter = 10, seed_mode = "random_subset", verbose = T, CENTROIDS = NULL)
+pr = predict_KMeans(as.matrix(pc_scores), km)
+xy <- coord(annomsi)
+plot(xy$x,xy$y,col=pr,cex=.1)
+
+plot(annomsi)
+png("anno.png", bg = "transparent",width = 823,height = 1192)
+par(mar=c(0,0,0,0))
+plot(xy$x,xy$y,col=as.vector(pr),cex=0.01,pch=19)
+dev.off()
+```
+
+## Reactomics
+
+This part will check reaction level changes of MSI
+```{r function}
+# this function will generate PMD for m/z from MSI
+getmdfilter <- function(mz,mdrange=c(0.25,0.9),digits = 2){
+  mz <- unique(mz)
+  dis <- stats::dist(mz, method = "manhattan")
+  df <- cbind.data.frame(
+                        ms1 = mz[which(lower.tri(dis), arr.ind = TRUE)[, 1]],
+                        ms2 = mz[which(lower.tri(dis), arr.ind = TRUE)[, 2]],
+                        diff = as.numeric(dis),
+                        diff2 = round(as.numeric(dis), digits = digits),
+                        md = as.numeric(dis)%%1
+                )
+  idx <- df$md<0.25|df$md>0.9
+  df <- df[idx,]
+  isoindex <- (round(df$diff, digits) != 0) & ((
+                                                        df$diff %% 1 < 0.01 &
+                                                                df$diff >= 1 &
+                                                                df$diff < 2
+                                                ) | (
+                                                        df$diff %% 2 < 0.01 &
+                                                                df$diff >= 2 &
+                                                                df$diff < 3
+                                                ) | (
+                                                        df$diff %% 1 > 0.99 &
+                                                                df$diff >= 1 &
+                                                                df$diff < 2
+                                                ) | (
+                                                        df$diff %% 1 > 0.99 &
+                                                                df$diff >= 0 &
+                                                                df$diff < 1
+                                                )
+                                                )
+  # print(sum(isoindex))
+  # print(dim(df))
+  dfiso <- df[isoindex,]
+  dfdeiso <- df[!isoindex,]
+  # print(dim(dfdeiso))
+  return(list(dfiso,dfdeiso))
+}
+```
+
+This part will extract PMDs for reaction level check.
+```{r}
+library(Cardinal)
+one <- readRDS("one.RDS")
+ms <- mz(one)
+df <- getmdfilter(ms)
+# 742728
+dfx <- df[[2]]
+# pick up ions from four common PMDs
+dfx$diff3 <- round(dfx$diff,3)
+dfx3 <- dfx[dfx$diff3==14.015|dfx$diff3==14.016,]
+dfx4 <- dfx[dfx$diff3==15.995|dfx$diff3==15.996,]
+dfx5 <- dfx[dfx$diff3==2.015|dfx$diff3==2.016,]
+dfx6 <- dfx[dfx$diff3==18.010|dfx$diff3==18.011,]
+
+dfms1 <- dfyoung[,ms%in%dfx3$ms1]
+dfms2 <- dfyoung[,ms%in%dfx3$ms2]
+dfmsyoung <- apply(dfms1, 1, sum)
+dfmsyoung2 <- apply(dfms2, 1, sum)
+dfms1 <- dfold[,ms%in%dfx3$ms1]
+dfms2 <- dfold[,ms%in%dfx3$ms2]
+dfmsold <- apply(dfms1, 1, sum)
+dfmsold2 <- apply(dfms2, 1, sum)
+xy$pmd14h <- c(dfmsold,dfmsyoung)
+xy$pmd14l <- c(dfmsold2,dfmsyoung2)
+xy$pmd14 <- xy$pmd14h+xy$pmd14l
+
+dfms1 <- dfyoung[,ms%in%dfx4$ms1]
+dfms2 <- dfyoung[,ms%in%dfx4$ms2]
+dfmsyoung <- apply(dfms1, 1, sum)
+dfmsyoung2 <- apply(dfms2, 1, sum)
+dfms1 <- dfold[,ms%in%dfx4$ms1]
+dfms2 <- dfold[,ms%in%dfx4$ms2]
+dfmsold <- apply(dfms1, 1, sum)
+dfmsold2 <- apply(dfms2, 1, sum)
+xy$pmd16h <- c(dfmsold,dfmsyoung)
+xy$pmd16l <- c(dfmsold2,dfmsyoung2)
+xy$pmd16 <- xy$pmd16h+xy$pmd16l
+
+dfms1 <- dfyoung[,ms%in%dfx5$ms1]
+dfms2 <- dfyoung[,ms%in%dfx5$ms2]
+dfmsyoung <- apply(dfms1, 1, sum)
+dfmsyoung2 <- apply(dfms2, 1, sum)
+dfms1 <- dfold[,ms%in%dfx5$ms1]
+dfms2 <- dfold[,ms%in%dfx5$ms2]
+dfmsold <- apply(dfms1, 1, sum)
+dfmsold2 <- apply(dfms2, 1, sum)
+xy$pmd2h <- c(dfmsold,dfmsyoung)
+xy$pmd2l <- c(dfmsold2,dfmsyoung2)
+xy$pmd2 <- xy$pmd2h+xy$pmd2l
+
+dfms1 <- dfyoung[,ms%in%dfx6$ms1]
+dfms2 <- dfyoung[,ms%in%dfx6$ms2]
+dfmsyoung <- apply(dfms1, 1, sum)
+dfmsyoung2 <- apply(dfms2, 1, sum)
+dfms1 <- dfold[,ms%in%dfx6$ms1]
+dfms2 <- dfold[,ms%in%dfx6$ms2]
+dfmsold <- apply(dfms1, 1, sum)
+dfmsold2 <- apply(dfms2, 1, sum)
+xy$pmd18h <- c(dfmsold,dfmsyoung)
+xy$pmd18l <- c(dfmsold2,dfmsyoung2)
+xy$pmd18 <- xy$pmd18h+xy$pmd18l
+# check reaction level changes
+t.test(xy$pmd2~xy$group)
+t.test(xy$pmd14~xy$group)
+t.test(xy$pmd16~xy$group)
+t.test(xy$pmd18~xy$group)
+```
+
+This part will be used to check if there were spatial changes with reaction.
+
+```{r}
+library(patchwork)
+a <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd2l), size = 0.001)+theme_bw()+ggtitle('PMD 2.02Da low')
+b <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd2h), size = 0.001)+theme_bw()+ggtitle('PMD 2.02Da high')
+c <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd14l), size = 0.001)+theme_bw()+ggtitle('PMD 14.02Da low')
+d <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd14h), size = 0.001)+theme_bw()+ggtitle('PMD 14.02Da high')
+e <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd16l), size = 0.001)+theme_bw()+ggtitle('PMD 15.99Da low')
+f <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd16h), size = 0.001)+theme_bw()+ggtitle('PMD 15.99Da high')
+g <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd18l), size = 0.001)+theme_bw()+ggtitle('PMD 18.00Da low')
+h <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd18h), size = 0.001)+theme_bw()+ggtitle('PMD 18.00Da high')
+a/b
+c/d
+e/f
+g/h
+```
