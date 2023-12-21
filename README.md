@@ -36,6 +36,8 @@ Other template could be used to check data analysis script.
 
 - reactomics: reactomics network analysis
 
+- MSI: mass sepctrometry imaging data analysis
+
 ## Citation
 
 - Yu, M., Dolios, G. & Petrick, L. Reproducible untargeted metabolomics workflow for exhaustive MS2 data acquisition of MS1 features. J Cheminform 14, 6 (2022). https://doi.org/10.1186/s13321-022-00586-8

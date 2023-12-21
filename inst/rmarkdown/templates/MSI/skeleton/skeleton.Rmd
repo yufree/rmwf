@@ -24,7 +24,6 @@ conda activate timsconvert
 python /opt/timsconvert/bin/run.py --input PATHOFRAWDATA.d --outdir PATHOFIMZMLDATA --exclude_mobility --compression 'none' --encoding 32
 ```
 
-
 ## Data input
 
 This part is using `Cardinal` package to import imzml data.
@@ -100,6 +99,85 @@ pr = predict_KMeans(as.matrix(pc_scores), km)
 xy <- coord(one)
 plot(xy$x,xy$y,col=pr,cex=0.001,pch=19)
 legend('top',legend = unique(pr),col=unique(pr),pch=19,cex=1)
+```
+
+## Visualization
+
+Save images for all ions.
+
+```{r}
+one <- readRDS("processed.RDS")
+# extract imaging intensity data
+df <- t(iData(one))
+# bring the data into memory
+df <- df[]
+mz <- mz(one)
+xy <- coord(one)
+x=max(xy$x)-min(xy$x)+1
+y=max(xy$y)-min(xy$y)+1 
+# save images for all ions
+for(i in 1:ncol(one)){
+  dfx <- df[,i]
+  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
+  png(paste0('one',mz[i],'.png'),width = x, height = y)
+  plot.new()
+  par(mar=c(0,0,0,0))
+  plot.window(xlim = c(0,x), ylim = c(0,y), xaxs = "i", yaxs = "i", asp = NA)
+  points(xy$x-min(xy$x), xy$y-min(xy$y), pch = 16, col = grDevices::gray(1 - norm),cex=0.3)
+  dev.off()
+}
+```
+
+## Cluster analysis for peaks
+
+This part will compute cosine distance for m/z and then perform cluster analysis to find peaks groups with similar spatial distribution. The purpose of this analysis is to check ion based ROIs and mapping them back to samples if possible.
+
+```{r}
+library(Cardinal)
+one <- readRDS("processed.RDS")
+# extract imaging intensity data
+df <- iData(one)
+# bring the data into memory
+df <- df[]
+# compute cosine similarity
+Matrix <- as.matrix(df)
+sim <- Matrix / sqrt(rowSums(Matrix * Matrix))
+sim <- sim %*% t(sim)
+# change to distance
+D_sim <- as.dist(1 - sim)
+# Hierarchical Clustering on m/z
+t <- hclust(D_sim)
+# set cutoff derived from glomeruli studies
+s <- cutree(t,h = 0.8)
+# only find the clusters with more than 10 ions
+name <- as.numeric(names(table(s)[table(s)>10]))
+# spilit the data
+split_matrices <- lapply(name, function(category) {
+  rows <- which(s == category)
+  subset_matrix <- df[rows, , drop = FALSE]
+  return(subset_matrix)
+})
+# sum the intensity from the same clusters
+summed_matrices <- lapply(split_matrices, function(subset_matrix) {
+  colSums(subset_matrix)
+})
+# generate figures for cluster TIC maps
+result_matrix <- do.call(cbind, summed_matrices)
+xy23 <- coord(one)
+x=max(xy23$x)-min(xy23$x)+1
+y=max(xy23$y)-min(xy23$y)+1 
+
+dir.create('cluster')
+for(i in c(1:length(name))){
+  dfx <- result_matrix[,i]
+  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
+  png(paste0('cluster/cluster',i,'.png'),width = x, height = y)
+  plot.new()
+  par(mar=c(0,0,0,0))
+  plot.window(xlim = c(0,x), ylim = c(0,y), xaxs = "i", yaxs = "i", asp = NA)
+  points(xy23$x-min(xy23$x), xy23$y-min(xy23$y), pch = 16, col = grDevices::gray(1 - norm),cex=0.3)
+  dev.off()
+}
 ```
 
 ## Differential analysis
@@ -200,6 +278,148 @@ ggplot(xx, aes(dis,group)) +
 t.test(xx$dis~xx$group)
 ```
 
+## Reactomics analysis
+
+This part will check reaction level changes of MSI
+
+```{r function}
+# this function will generate PMD for m/z from MSI
+getmdfilter <- function(mz,mdrange=c(0.25,0.9),digits = 2){
+  mz <- unique(mz)
+  dis <- stats::dist(mz, method = "manhattan")
+  df <- cbind.data.frame(
+                        ms1 = mz[which(lower.tri(dis), arr.ind = TRUE)[, 1]],
+                        ms2 = mz[which(lower.tri(dis), arr.ind = TRUE)[, 2]],
+                        diff = as.numeric(dis),
+                        diff2 = round(as.numeric(dis), digits = digits),
+                        md = as.numeric(dis)%%1
+                )
+  idx <- df$md<0.25|df$md>0.9
+  df <- df[idx,]
+  isoindex <- (round(df$diff, digits) != 0) & ((
+                                                        df$diff %% 1 < 0.01 &
+                                                                df$diff >= 1 &
+                                                                df$diff < 2
+                                                ) | (
+                                                        df$diff %% 2 < 0.01 &
+                                                                df$diff >= 2 &
+                                                                df$diff < 3
+                                                ) | (
+                                                        df$diff %% 1 > 0.99 &
+                                                                df$diff >= 1 &
+                                                                df$diff < 2
+                                                ) | (
+                                                        df$diff %% 1 > 0.99 &
+                                                                df$diff >= 0 &
+                                                                df$diff < 1
+                                                )
+                                                )
+  # print(sum(isoindex))
+  # print(dim(df))
+  dfiso <- df[isoindex,]
+  dfdeiso <- df[!isoindex,]
+  # print(dim(dfdeiso))
+  return(list(dfiso,dfdeiso))
+}
+```
+
+This part will extract PMDs for reaction level check.
+
+```{r}
+library(Cardinal)
+one <- readRDS("one.RDS")
+dfall <- iData(one)
+dfall <- dfall[]
+ms <- mz(one)
+df <- getmdfilter(ms)
+# 742728
+dfx <- df[[2]]
+# get coord of data and group factor
+xy <- coord(one)
+xy$factor <- pixelData(one)$factor
+# pick up ions from four common PMDs
+dfx$diff3 <- round(dfx$diff,3)
+dfx3 <- dfx[dfx$diff3==14.015|dfx$diff3==14.016,]
+dfx4 <- dfx[dfx$diff3==15.995|dfx$diff3==15.996,]
+dfx5 <- dfx[dfx$diff3==2.015|dfx$diff3==2.016,]
+dfx6 <- dfx[dfx$diff3==18.010|dfx$diff3==18.011,]
+# normalize ion intensity
+dfall <- apply(dfall,1,function(x) x/max(x))
+dfall[is.na(dfall)] <- 0
+# PMD14.016
+dfms1 <- dfall[,ms%in%dfx3$ms1]
+dfms2 <- dfall[,ms%in%dfx3$ms2]
+xy$pmd14h <- apply(dfms1, 1, sum)
+xy$pmd14l <- apply(dfms2, 1, sum)
+# PMD15.995
+dfms1 <- dfall[,ms%in%dfx4$ms1]
+dfms2 <- dfall[,ms%in%dfx4$ms2]
+xy$pmd16h <- apply(dfms1, 1, sum)
+xy$pmd16l <- apply(dfms2, 1, sum)
+# PMD2.016
+dfms1 <- dfall[,ms%in%dfx5$ms1]
+dfms2 <- dfall[,ms%in%dfx5$ms2]
+xy$pmd2h <- apply(dfms1, 1, sum)
+xy$pmd2l <- apply(dfms2, 1, sum)
+# PMD18.011
+dfms1 <- dfall[,ms%in%dfx6$ms1]
+dfms2 <- dfall[,ms%in%dfx6$ms2]
+xy$pmd18h <- apply(dfms1, 1, sum)
+xy$pmd18l <- apply(dfms2, 1, sum)
+# combine ion pairs
+xy$pmd2 <- xy$pmd2h+xy$pmd2l
+xy$pmd14 <- xy$pmd14h+xy$pmd14l
+xy$pmd16 <- xy$pmd16h+xy$pmd16l
+xy$pmd18 <- xy$pmd18h+xy$pmd18l
+
+# check reaction level changes by linear regression
+summary(lm(xy$pmd2~xy$factor))
+summary(lm(xy$pmd14~xy$factor))
+summary(lm(xy$pmd16~xy$factor))
+summary(lm(xy$pmd18~xy$factor))
+
+summary(lm(xy$pmd2h~xy$factor))
+summary(lm(xy$pmd14h~xy$factor))
+summary(lm(xy$pmd16h~xy$factor))
+summary(lm(xy$pmd18h~xy$factor))
+
+summary(lm(xy$pmd2l~xy$factor))
+summary(lm(xy$pmd14l~xy$factor))
+summary(lm(xy$pmd16l~xy$factor))
+summary(lm(xy$pmd18l~xy$factor))
+
+# check reaction level changes by t test
+t.test(xy$pmd2~xy$factor)
+t.test(xy$pmd14~xy$factor)
+t.test(xy$pmd16~xy$factor)
+t.test(xy$pmd18~xy$factor)
+```
+
+This part will be used to check if there were spatial changes with reaction.
+
+```{r}
+library(patchwork)
+a <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd2l), size = 0.001)+theme_bw()+ggtitle('PMD 2.02Da low')
+b <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd2h), size = 0.001)+theme_bw()+ggtitle('PMD 2.02Da high')
+c <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd14l), size = 0.001)+theme_bw()+ggtitle('PMD 14.02Da low')
+d <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd14h), size = 0.001)+theme_bw()+ggtitle('PMD 14.02Da high')
+e <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd16l), size = 0.001)+theme_bw()+ggtitle('PMD 15.99Da low')
+f <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd16h), size = 0.001)+theme_bw()+ggtitle('PMD 15.99Da high')
+g <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd18l), size = 0.001)+theme_bw()+ggtitle('PMD 18.00Da low')
+h <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd18h), size = 0.001)+theme_bw()+ggtitle('PMD 18.00Da high')
+a/b
+c/d
+e/f
+g/h
+```
 
 ## Anatomy registration
 
@@ -410,143 +630,4 @@ png("anno.png", bg = "transparent",width = 823,height = 1192)
 par(mar=c(0,0,0,0))
 plot(xy$x,xy$y,col=as.vector(pr),cex=0.01,pch=19)
 dev.off()
-```
-
-## Reactomics
-
-This part will check reaction level changes of MSI
-```{r function}
-# this function will generate PMD for m/z from MSI
-getmdfilter <- function(mz,mdrange=c(0.25,0.9),digits = 2){
-  mz <- unique(mz)
-  dis <- stats::dist(mz, method = "manhattan")
-  df <- cbind.data.frame(
-                        ms1 = mz[which(lower.tri(dis), arr.ind = TRUE)[, 1]],
-                        ms2 = mz[which(lower.tri(dis), arr.ind = TRUE)[, 2]],
-                        diff = as.numeric(dis),
-                        diff2 = round(as.numeric(dis), digits = digits),
-                        md = as.numeric(dis)%%1
-                )
-  idx <- df$md<0.25|df$md>0.9
-  df <- df[idx,]
-  isoindex <- (round(df$diff, digits) != 0) & ((
-                                                        df$diff %% 1 < 0.01 &
-                                                                df$diff >= 1 &
-                                                                df$diff < 2
-                                                ) | (
-                                                        df$diff %% 2 < 0.01 &
-                                                                df$diff >= 2 &
-                                                                df$diff < 3
-                                                ) | (
-                                                        df$diff %% 1 > 0.99 &
-                                                                df$diff >= 1 &
-                                                                df$diff < 2
-                                                ) | (
-                                                        df$diff %% 1 > 0.99 &
-                                                                df$diff >= 0 &
-                                                                df$diff < 1
-                                                )
-                                                )
-  # print(sum(isoindex))
-  # print(dim(df))
-  dfiso <- df[isoindex,]
-  dfdeiso <- df[!isoindex,]
-  # print(dim(dfdeiso))
-  return(list(dfiso,dfdeiso))
-}
-```
-
-This part will extract PMDs for reaction level check.
-```{r}
-library(Cardinal)
-one <- readRDS("one.RDS")
-ms <- mz(one)
-df <- getmdfilter(ms)
-# 742728
-dfx <- df[[2]]
-# pick up ions from four common PMDs
-dfx$diff3 <- round(dfx$diff,3)
-dfx3 <- dfx[dfx$diff3==14.015|dfx$diff3==14.016,]
-dfx4 <- dfx[dfx$diff3==15.995|dfx$diff3==15.996,]
-dfx5 <- dfx[dfx$diff3==2.015|dfx$diff3==2.016,]
-dfx6 <- dfx[dfx$diff3==18.010|dfx$diff3==18.011,]
-
-dfms1 <- dfyoung[,ms%in%dfx3$ms1]
-dfms2 <- dfyoung[,ms%in%dfx3$ms2]
-dfmsyoung <- apply(dfms1, 1, sum)
-dfmsyoung2 <- apply(dfms2, 1, sum)
-dfms1 <- dfold[,ms%in%dfx3$ms1]
-dfms2 <- dfold[,ms%in%dfx3$ms2]
-dfmsold <- apply(dfms1, 1, sum)
-dfmsold2 <- apply(dfms2, 1, sum)
-xy$pmd14h <- c(dfmsold,dfmsyoung)
-xy$pmd14l <- c(dfmsold2,dfmsyoung2)
-xy$pmd14 <- xy$pmd14h+xy$pmd14l
-
-dfms1 <- dfyoung[,ms%in%dfx4$ms1]
-dfms2 <- dfyoung[,ms%in%dfx4$ms2]
-dfmsyoung <- apply(dfms1, 1, sum)
-dfmsyoung2 <- apply(dfms2, 1, sum)
-dfms1 <- dfold[,ms%in%dfx4$ms1]
-dfms2 <- dfold[,ms%in%dfx4$ms2]
-dfmsold <- apply(dfms1, 1, sum)
-dfmsold2 <- apply(dfms2, 1, sum)
-xy$pmd16h <- c(dfmsold,dfmsyoung)
-xy$pmd16l <- c(dfmsold2,dfmsyoung2)
-xy$pmd16 <- xy$pmd16h+xy$pmd16l
-
-dfms1 <- dfyoung[,ms%in%dfx5$ms1]
-dfms2 <- dfyoung[,ms%in%dfx5$ms2]
-dfmsyoung <- apply(dfms1, 1, sum)
-dfmsyoung2 <- apply(dfms2, 1, sum)
-dfms1 <- dfold[,ms%in%dfx5$ms1]
-dfms2 <- dfold[,ms%in%dfx5$ms2]
-dfmsold <- apply(dfms1, 1, sum)
-dfmsold2 <- apply(dfms2, 1, sum)
-xy$pmd2h <- c(dfmsold,dfmsyoung)
-xy$pmd2l <- c(dfmsold2,dfmsyoung2)
-xy$pmd2 <- xy$pmd2h+xy$pmd2l
-
-dfms1 <- dfyoung[,ms%in%dfx6$ms1]
-dfms2 <- dfyoung[,ms%in%dfx6$ms2]
-dfmsyoung <- apply(dfms1, 1, sum)
-dfmsyoung2 <- apply(dfms2, 1, sum)
-dfms1 <- dfold[,ms%in%dfx6$ms1]
-dfms2 <- dfold[,ms%in%dfx6$ms2]
-dfmsold <- apply(dfms1, 1, sum)
-dfmsold2 <- apply(dfms2, 1, sum)
-xy$pmd18h <- c(dfmsold,dfmsyoung)
-xy$pmd18l <- c(dfmsold2,dfmsyoung2)
-xy$pmd18 <- xy$pmd18h+xy$pmd18l
-# check reaction level changes
-t.test(xy$pmd2~xy$group)
-t.test(xy$pmd14~xy$group)
-t.test(xy$pmd16~xy$group)
-t.test(xy$pmd18~xy$group)
-```
-
-This part will be used to check if there were spatial changes with reaction.
-
-```{r}
-library(patchwork)
-a <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd2l), size = 0.001)+theme_bw()+ggtitle('PMD 2.02Da low')
-b <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd2h), size = 0.001)+theme_bw()+ggtitle('PMD 2.02Da high')
-c <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd14l), size = 0.001)+theme_bw()+ggtitle('PMD 14.02Da low')
-d <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd14h), size = 0.001)+theme_bw()+ggtitle('PMD 14.02Da high')
-e <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd16l), size = 0.001)+theme_bw()+ggtitle('PMD 15.99Da low')
-f <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd16h), size = 0.001)+theme_bw()+ggtitle('PMD 15.99Da high')
-g <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd18l), size = 0.001)+theme_bw()+ggtitle('PMD 18.00Da low')
-h <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd18h), size = 0.001)+theme_bw()+ggtitle('PMD 18.00Da high')
-a/b
-c/d
-e/f
-g/h
 ```
