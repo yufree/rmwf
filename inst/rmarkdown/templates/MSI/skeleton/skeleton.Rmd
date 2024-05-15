@@ -32,7 +32,7 @@ This part is using `Cardinal` package to import imzml data.
 library(Cardinal)
 # uncomment the following two lines and change the core number according to your computational resources
 # setCardinalBPPARAM(BPPARAM = MulticoreParam(30))
-# setCardinalNumBlocks(30)
+# setCardinalNChunks(30)
 
 # Change IMZMLFILEPATH to your imzML file path and you might set mass range
 t <- readImzML('IMZMLFILEPATH',resolution = 20,units = 'ppm')
@@ -50,18 +50,37 @@ tsub <- t[,pid]
 This part will extract all the ions for imaging with normalization (Default method is "Total Ion Chromatogram"), signal smoothing, baseline reducing, peak picking, alignment, and peak filtering. This step will take a long time and use high-memory node with multiple cores(30). For one slide with four sample, it will need eight hours on high-memory node of HPC. Please save the processed object for the following data analysis. 
 
 ```{r}
-tsub <- tsub %>%
-    # normalization
-    normalize(method='tic') %>%
-    smoothSignal() %>%
-    reduceBaseline() %>%
-    peakPick() %>%
-    peakAlign() %>%
-    # default 1%, keep ions appearred in at least 1% pixels
-    peakFilter() %>%
-    process()
+tsub <- tsub |>
+    normalize(method="tic") |>
+    smooth(method="gaussian") |>
+    reduceBaseline(method="locmin") |>
+    peakProcess(SNR=3, filterFreq=0.05,
+        tolerance=20, units="ppm")
 
 saveRDS(tsub,'processed.RDS')
+```
+
+## Peak statistics
+
+This part will show the distribution of peak numbers.
+
+```{r}
+library(Cardinal)
+setCardinalBPPARAM(BPPARAM = MulticoreParam(30))
+setCardinalNChunks(30)
+one <- readRDS("processed.RDS")
+df <- intensity(one)
+df <- df[]
+dfx <- apply(df, 2, function(x) sum(x==0))
+xy <- coord(one)
+xy$np <- nrow(df)-dfx
+xy <- as.data.frame(xy)
+library(ggplot2)
+ggplot(xy,aes(np)) +
+  ggtitle('peak number for each pixel')+xlab('peak number')+
+  geom_histogram(binwidth=1)+theme_bw()
+ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = np), size = 0.001)+theme_bw()
 ```
 
 ## PCA Segmentation
@@ -71,27 +90,31 @@ This part will perform PCA on MSI intensity data and retain PCs with accumulated
 ```{r}
 one <- readRDS("processed.RDS")
 # extract imaging intensity data
-df <- t(iData(one))
+df <- intensity(one)
 # bring the data into memory
 df <- df[]
 # perform PCA scale or not will strong influence the result, default FALSE
 # scale will loss macro structure
 # pca <- prcomp(df,scale. = T)
-pca <- prcomp(df)
+pca <- prcomp(t(df))
 # calculate variances for each PC
 eigs <- pca$sdev^2
 # find the PC numbers with more than 80% variances in the data
-sum(eigs[1:4]) / sum(eigs)
+i <- 1
+cumulative_sum <- 0
+total_sum <- sum(eigs)
+threshold <- 0.8
+while (cumulative_sum / total_sum <= threshold && i <= 100) {
+  cumulative_sum <- cumulative_sum + eigs[i]
+  i <- i + 1
+}
+pc_scores <- pca$x
+sum(eigs[1:i]) / sum(eigs)
 
-# extract PC by the number found in last step
-library(Cardinal)
-mse_peakref_pca <- PCA(one, ncomp=4)
-# extract PC data
-pc_scores <- DataFrame(resultData(mse_peakref_pca, 1, "scores"))
 # subset for cluster number optimization
-subdf <- pc_scores[sample(nrow(pc_scores),10000),]
+subdf <- pc_scores[,c(1:i)]
 library(ClusterR)
-opt = Optimal_Clusters_KMeans(as.data.frame(subdf), max_clusters = 10, plot_clusters = T, criterion = 'silhouette',initializer = 'optimal_init', tol_optimal_init = 0.2)
+opt = Optimal_Clusters_KMeans(subdf[sample(1:nrow(subdf),10000),], max_clusters = 10, plot_clusters = T, criterion = 'silhouette',initializer = 'optimal_init', tol_optimal_init = 0.2)
 # use the optimized number for cluster
 km = KMeans_arma(as.matrix(pc_scores), clusters = 5, n_iter = 10, seed_mode = "random_subset", verbose = T, CENTROIDS = NULL)
 pr = predict_KMeans(as.matrix(pc_scores), km)
@@ -100,6 +123,73 @@ xy <- coord(one)
 plot(xy$x,xy$y,col=pr,cex=0.001,pch=19)
 legend('top',legend = unique(pr),col=unique(pr),pch=19,cex=1)
 ```
+
+## Spatial scale
+
+This part will scale the data spatially with a scale of 5. In this case, the data analysis process will be much faster.
+
+```{r}
+library(Cardinal)
+one <- readRDS("processed.RDS")
+# extract imaging intensity data
+df <- intensity(one)
+# bring the data into memory
+df <- df[]
+n <- 5
+coords <- coord(one)
+x = coords$x
+y = coords$y
+z = t(df)
+
+x_min <- min(x)
+x_max <- max(x)
+y_min <- min(y)
+y_max <- max(y)
+
+new_x_size <- floor((x_max - x_min) / n) + 1
+new_y_size <- floor((y_max - y_min) / n) + 1
+x_new <- seq(x_min, x_max, length.out=new_x_size)
+y_new <- seq(y_min, y_max, length.out=new_y_size)
+new_coords <- expand.grid(x_new,y_new)
+
+new_features <- matrix(0, nrow=new_x_size*new_y_size, ncol=ncol(z))
+
+for (i in seq_len(nrow(new_coords))) {
+  x_idx <- which(abs(x - new_coords[i, 1]) <= n/2)
+  y_idx <- which(abs(y - new_coords[i, 2]) <= n/2)
+  idx <- intersect(x_idx, y_idx)
+  if (length(idx) > 1) {
+    new_features[i, ] <- colSums(z[idx, ])
+  }else if(length(idx) == 1) {
+    new_features[i, ] <- z[idx,]
+  }
+}
+
+non_zero_idx <- apply(new_features, 1, function(x) any(x != 0))
+new_features <- new_features[non_zero_idx, ]
+new_coords <- new_coords[non_zero_idx, ]
+
+coordx <- DataFrame(x=new_coords$Var1,y=new_coords$Var2)
+fdata <- MassDataFrame(mz=mz(one))
+pdata <- PositionDataFrame(run=factor(rep('one',nrow(coordx))), coord=coordx)
+
+out <- SpectralImagingExperiment(spectraData=t(new_features),
+                            featureData=fdata,
+                            pixelData=pdata)
+rcc_pk <- spatialKMeans(out, r=1,k=5,ncomp=11)
+image(rcc_pk)
+
+rcc_ssc <- spatialShrunkenCentroids(out, r=1, s=9,k=5)
+
+library(umap)
+vis <- umap(new_features,method="umap-learn",metric='cosine')
+library(dbscan)
+dbscan_result <- dbscan(vis$layout, eps = 0.5, minPts = 5)
+plot(x=coordx$x,y=coordx$y,col=dbscan_result$cluster,pch=13,cex=0.1)
+plot(vis$layout[,1],vis$layout[,2],col=dbscan_result$cluster,pch=13,cex=0.1);table(dbscan_result$cluster)
+
+```
+
 
 ## Visualization
 
