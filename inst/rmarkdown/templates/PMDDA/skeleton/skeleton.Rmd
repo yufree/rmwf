@@ -175,6 +175,43 @@ getrtmz <- function(path,index = NULL){
 }
 ```
 
+## Peak picking with ROI
+
+Peak picking can be performed with a predefined ROI list. This part can be used for targeted analysis.
+
+```{r}
+roilist <- list(data.frame(scmin=235,scmax=287,mzmin=256,mzmax=257,length=-1,intensity=-1),data.frame(scmin=560,scmax=586,mzmin=432,mzmax=433,length=-1,intensity=-1))
+
+# show the peaks 1
+rtr <- c(355, 390)
+mzr <- c(432.2, 432.29)
+## extract the chromatogram
+chr_raw <- chromatogram(raw_data, mz = mzr, rt = rtr)
+plot(chr_raw)
+# show the peaks 2
+rtr <- c(170, 200)
+mzr <- c(256.1, 256.2)
+## extract the chromatogram
+chr_raw <- chromatogram(raw_data, mz = mzr, rt = rtr)
+plot(chr_raw)
+
+cwp <- CentWaveParam(roiList = roilist,
+                     peakwidth = c(para$min_peakwidth,para$max_peakwidth), 
+                     ppm             = para$ppm,
+                     noise           = para$noise,
+                     snthresh        = para$snthresh,
+                     mzdiff          = para$mzdiff,
+                     prefilter       = c(para$prefilter,para$value_of_prefilter),
+                     mzCenterFun     = para$mzCenterFun,
+                     integrate       = para$integrate,
+                     fitgauss        = para$fitgauss,
+                     verboseColumns  = para$verbose.columns)
+
+xdata <- findChromPeaks(raw_data, param = cwp,BPPARAM=SerialParam())
+peaklist <- chromPeaks(xdata)
+```
+
+
 # Peaks list
 
 This chunk is used to generate peaks list related csv/objects files for further analysis.
