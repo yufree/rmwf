@@ -139,8 +139,7 @@ getrtmz <- function(path,index = NULL){
   sample_name=sub(basename(files),pattern = ".CDF|.mzXML|.mzML",replacement = '')
   pd <- cbind.data.frame(sample_name, sample_group)
   
-  raw_data <- readMSData(files = files, pdata = new("NAnnotatedDataFrame", pd),
-                       mode = "onDisk")
+  raw_data <- readMsExperiment(spectraFiles = files, sampleData = pd)
   cwp <- CentWaveParam(peakwidth = c(para$min_peakwidth,para$max_peakwidth), 
                        ppm             = para$ppm,
                        noise           = para$noise,
