@@ -198,7 +198,7 @@ Save images for all ions.
 ```{r}
 one <- readRDS("processed.RDS")
 # extract imaging intensity data
-df <- t(iData(one))
+df <- t(intensity(one))
 # bring the data into memory
 df <- df[]
 mz <- mz(one)
@@ -226,7 +226,7 @@ This part will compute cosine distance for m/z and then perform cluster analysis
 library(Cardinal)
 one <- readRDS("processed.RDS")
 # extract imaging intensity data
-df <- iData(one)
+df <- intensity(one)
 # bring the data into memory
 df <- df[]
 # compute cosine similarity
@@ -249,7 +249,9 @@ split_matrices <- lapply(name, function(category) {
 })
 # sum the intensity from the same clusters
 summed_matrices <- lapply(split_matrices, function(subset_matrix) {
-  colSums(subset_matrix)
+  xxx <- apply(subset_matrix, 1, scale)
+  x <- rowSums(xxx)/ncol(xxx)
+  return(x)
 })
 # generate figures for cluster TIC maps
 result_matrix <- do.call(cbind, summed_matrices)
@@ -277,7 +279,7 @@ for(i in c(1:length(name))){
 ```{r}
 one <- readRDS("processed.RDS")
 # extract imaging intensity data
-df <- t(iData(one))
+df <- t(intensity(one))
 # bring the data into memory
 df <- df[]
 # define pixel level groups
@@ -304,7 +306,7 @@ sum(re$adj<0.05&!is.na(re$adj)&(fcall>1.5|fcall<0.67))/length(re$adj)
 ```{r}
 xy$group <- c(rep('old',500000),rep('young',500000))
 dfx <- apply(df, 1, function(x) sum(x==0))
-dfx <- 2471-dfx
+dfx <- ncol(dfx)-dfx
 xy$np <- dfx
 
 ggplot(xy,aes(np)) +
@@ -370,90 +372,46 @@ t.test(xx$dis~xx$group)
 
 ## Reactomics analysis
 
-This part will check reaction level changes of MSI
-
-```{r function}
-# this function will generate PMD for m/z from MSI
-getmdfilter <- function(mz,mdrange=c(0.25,0.9),digits = 2){
-  mz <- unique(mz)
-  dis <- stats::dist(mz, method = "manhattan")
-  df <- cbind.data.frame(
-                        ms1 = mz[which(lower.tri(dis), arr.ind = TRUE)[, 1]],
-                        ms2 = mz[which(lower.tri(dis), arr.ind = TRUE)[, 2]],
-                        diff = as.numeric(dis),
-                        diff2 = round(as.numeric(dis), digits = digits),
-                        md = as.numeric(dis)%%1
-                )
-  idx <- df$md<0.25|df$md>0.9
-  df <- df[idx,]
-  isoindex <- (round(df$diff, digits) != 0) & ((
-                                                        df$diff %% 1 < 0.01 &
-                                                                df$diff >= 1 &
-                                                                df$diff < 2
-                                                ) | (
-                                                        df$diff %% 2 < 0.01 &
-                                                                df$diff >= 2 &
-                                                                df$diff < 3
-                                                ) | (
-                                                        df$diff %% 1 > 0.99 &
-                                                                df$diff >= 1 &
-                                                                df$diff < 2
-                                                ) | (
-                                                        df$diff %% 1 > 0.99 &
-                                                                df$diff >= 0 &
-                                                                df$diff < 1
-                                                )
-                                                )
-  # print(sum(isoindex))
-  # print(dim(df))
-  dfiso <- df[isoindex,]
-  dfdeiso <- df[!isoindex,]
-  # print(dim(dfdeiso))
-  return(list(dfiso,dfdeiso))
-}
-```
-
 This part will extract PMDs for reaction level check.
 
 ```{r}
 library(Cardinal)
+library(pmd)
 one <- readRDS("one.RDS")
-dfall <- iData(one)
+dfall <- intensity(one)
 dfall <- dfall[]
 ms <- mz(one)
-df <- getmdfilter(ms)
-# 742728
-dfx <- df[[2]]
+df <- getpmddf(ms,pmd=c(14.015,14.016,15.995,15.996,2.015,2.016,18.010,18.011),digits = 3)
 # get coord of data and group factor
 xy <- coord(one)
 xy$factor <- pixelData(one)$factor
 # pick up ions from four common PMDs
-dfx$diff3 <- round(dfx$diff,3)
-dfx3 <- dfx[dfx$diff3==14.015|dfx$diff3==14.016,]
-dfx4 <- dfx[dfx$diff3==15.995|dfx$diff3==15.996,]
-dfx5 <- dfx[dfx$diff3==2.015|dfx$diff3==2.016,]
-dfx6 <- dfx[dfx$diff3==18.010|dfx$diff3==18.011,]
+df$diff3 <- round(dfx$diff,3)
+df3 <- df[df$diff3==14.015|df$diff3==14.016,]
+df4 <- df[df$diff3==15.995|df$diff3==15.996,]
+df5 <- df[df$diff3==2.015|df$diff3==2.016,]
+df6 <- df[df$diff3==18.010|df$diff3==18.011,]
 # normalize ion intensity
 dfall <- apply(dfall,1,function(x) x/max(x))
 dfall[is.na(dfall)] <- 0
 # PMD14.016
-dfms1 <- dfall[,ms%in%dfx3$ms1]
-dfms2 <- dfall[,ms%in%dfx3$ms2]
+dfms1 <- dfall[,ms%in%df3$ms1]
+dfms2 <- dfall[,ms%in%df3$ms2]
 xy$pmd14h <- apply(dfms1, 1, sum)
 xy$pmd14l <- apply(dfms2, 1, sum)
 # PMD15.995
-dfms1 <- dfall[,ms%in%dfx4$ms1]
-dfms2 <- dfall[,ms%in%dfx4$ms2]
+dfms1 <- dfall[,ms%in%df4$ms1]
+dfms2 <- dfall[,ms%in%df4$ms2]
 xy$pmd16h <- apply(dfms1, 1, sum)
 xy$pmd16l <- apply(dfms2, 1, sum)
 # PMD2.016
-dfms1 <- dfall[,ms%in%dfx5$ms1]
-dfms2 <- dfall[,ms%in%dfx5$ms2]
+dfms1 <- dfall[,ms%in%df5$ms1]
+dfms2 <- dfall[,ms%in%df5$ms2]
 xy$pmd2h <- apply(dfms1, 1, sum)
 xy$pmd2l <- apply(dfms2, 1, sum)
 # PMD18.011
-dfms1 <- dfall[,ms%in%dfx6$ms1]
-dfms2 <- dfall[,ms%in%dfx6$ms2]
+dfms1 <- dfall[,ms%in%df6$ms1]
+dfms2 <- dfall[,ms%in%df6$ms2]
 xy$pmd18h <- apply(dfms1, 1, sum)
 xy$pmd18l <- apply(dfms2, 1, sum)
 # combine ion pairs
