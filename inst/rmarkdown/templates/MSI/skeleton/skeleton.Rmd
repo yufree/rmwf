@@ -13,361 +13,413 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE,eval = FALSE)
 ```
 
-## Raw data format
+# Raw data 
 
-This part will use `timsconvert` to process raw data(.d files) from instrument to open source format(imzML). You should install timsconvert from their [website](https://github.com/gtluu/timsconvert). Then convert the file using the following code:
+## Reference peaks
 
-```{bash}
-conda activate timsconvert
-# change PATHOFRAWDATA.d to your raw data file
-# change PATHOFIMZMLDATA as your output file path
-python /opt/timsconvert/bin/run.py --input PATHOFRAWDATA.d --outdir PATHOFIMZMLDATA --exclude_mobility --compression 'none' --encoding 32
-```
-
-## Data input
-
-This part is using `Cardinal` package to import imzml data.
+Peaks from all pixels will be added together as one super pixel for reference peak picking.
 
 ```{r}
-library(Cardinal)
-# uncomment the following two lines and change the core number according to your computational resources
-# setCardinalBPPARAM(BPPARAM = MulticoreParam(30))
-# setCardinalNChunks(30)
+library(opentimsr)
+library(data.table)
+# set the path to the .d folder
+path = 'PATH_TO_RAW.d'
+# accept Bruker's lisence
+accept_Bruker_EULA_and_on_Windows_or_Linux = TRUE
+# download dll/so file and set the column to be collected
+if (accept_Bruker_EULA_and_on_Windows_or_Linux) {
+  folder_to_stode_priopriatary_code = "~"
+  path_to_bruker_dll = download_bruker_proprietary_code(folder_to_stode_priopriatary_code)
+  setup_bruker_so(path_to_bruker_dll)
+  all_columns = c('frame', 'intensity', 'mz', 'inv_ion_mobility')
+}
+# Build the connection with raw data
+D = OpenTIMS(path)
+# extract frame information or define a range to subset the data
+xy <- table2df(D, "MaldiFrameInfo")
+# subset coords idx for region of interests
+idx <- which(xy$MaldiFrameInfo$XIndexPos>3400&xy$MaldiFrameInfo$XIndexPos<3900&xy$MaldiFrameInfo$YIndexPos>1050&xy$MaldiFrameInfo$YIndexPos<1600)
+# set a batch size to avoid memory issues by process the data in batches
+total_frames <- dim(xy$MaldiFrameInfo[idx,])[1]
+frame <- xy$MaldiFrameInfo$Frame[idx]
 
-# Change IMZMLFILEPATH to your imzML file path and you might set mass range
-t <- readImzML('IMZMLFILEPATH',resolution = 20,units = 'ppm')
+# Process data in batches
+batch_size <- 100000
+total_batches <- ceiling(total_frames / batch_size)
 
-# get the coords of imaging pixels
-xy <- coord(t)
+dtx_list <- list()
+for (i in 1:total_batches) {
+  start_idx <- (i - 1) * batch_size + 1
+  end_idx <- min(i * batch_size, total_frames)
+  idx <- start_idx:end_idx
 
-# refine the imaging area for certain sample(s)
-pid <- pixels(t, x <= 2000, y<800)
-tsub <- t[,pid]
+  data <- query(D, frames = frame[idx], columns = all_columns)
+  data <- as.data.table(data)
+  # round up to make sure binning is working and fit the mass/ion mobility accuracy
+  data[, mz := round(mz, 4)]
+  data[, inv_ion_mobility := round(inv_ion_mobility, 3)]
+  
+  dt <- data[, .(intensity = sum(intensity)), by = .(mz, inv_ion_mobility)]
+  dtx_list[[i]] <- dt  
+  rm(data)
+  gc()
+}
+# reshape the data by mz and ion mobility
+dtx <- rbindlist(dtx_list)
+dtx <- dtx[, .(intensity = sum(intensity)), by = .(mz, inv_ion_mobility)]
+
+# add ccs value for super pixel peaks
+library(data.table)
+library(Rcpp)
+sourceCpp("one_over_k0_to_ccs.cpp")
+lib_path <- "libtimsdata.so"
+result <- one_over_k0_to_ccs_parallel(dtx$inv_ion_mobility, rep(1,length(dtx$inv_ion_mobility)), dtx$mz, lib_path)
+dtx[,ccs:=result]
+# save super pixel peaks
+fwrite(dtx,'refpeak.csv')
+# save the location of pixels
+coord <- xy$MaldiFrameInfo[-idx,c('Frame','XIndexPos','YIndexPos')]
+fwrite(coord,'coord.csv')
 ```
 
-## Data processing
+## Reference peak picking
 
-This part will extract all the ions for imaging with normalization (Default method is "Total Ion Chromatogram"), signal smoothing, baseline reducing, peak picking, alignment, and peak filtering. This step will take a long time and use high-memory node with multiple cores(30). For one slide with four sample, it will need eight hours on high-memory node of HPC. Please save the processed object for the following data analysis. 
+This part will be used to find reference peaks across the sample.
+
+### Reference peak picking function
+
+This section define the function for peak picking with rcpp support.
 
 ```{r}
-tsub <- tsub |>
-    normalize(method="tic") |>
-    smooth(method="gaussian") |>
-    reduceBaseline(method="locmin") |>
-    peakProcess(SNR=3, filterFreq=0.05,
-        tolerance=20, units="ppm")
-
-saveRDS(tsub,'processed.RDS')
+library(Rcpp)
+sourceCpp("peak_finder.cpp")
+find_2d_peaks <- function(mz, ccs, intensity, 
+                          mz_ppm = 20, 
+                          ccs_tolerance = 0.03,
+                          snr = 3.0,
+                          mz_bins = 1000,
+                          ccs_bins = 50) {
+  
+  if (!is.numeric(mz) || !is.numeric(ccs) || !is.numeric(intensity)) {
+    stop("All inputs must be numeric vectors")
+  }
+  if (length(mz) != length(ccs) || length(mz) != length(intensity)) {
+    stop("All input vectors must have the same length")
+  }
+  
+  find_2d_peaks_spatial_parallel_openmp(mz, ccs, intensity, 
+                                        mz_ppm, ccs_tolerance, snr,
+                                        mz_bins, ccs_bins)
+}
 ```
+
+### Reference peak picking
+
+Set the parameters for peak picking and perform peak picking on super pixels. The default setting will keep all the local max peaks found in the super pixel. However, most of the peaks with smaller intensity will not be retained in the following filtering analysis and more peaks will use more computational resources for peak picking. In this case, intensity cutoff could be carefully set depending on the sensitivity of the instrument and the mean/median value of all the peaks' intensity could be the first choice.
+
+```{r}
+library(data.table)
+dtx <- fread('refpeak.csv')
+mz_ppm <- 20
+ccs_tolerance <- 0.03
+snr <- 3
+mz_bins <- 1000
+ccs_bins <- 50
+result <- find_2d_peaks(dtx$mz,dtx$ccs,dtx$intensity,mz_ppm,ccs_tolerance,snr,mz_bins,ccs_bins)
+fwrite(result,'ref2d.csv')
+# retain peaks larger than mean value of all reference peaks
+# sub <- result[result$intensity>mean(result$intensity),]
+# fwrite(sub,'ref2d.csv')
+```
+
+# Quantitative Peaks List
+
+This part will extract peak intensity on all pixels according to extracted reference peaks from super pixel.
+
+```{r}
+# load the reference peaks
+library(data.table)
+library(Rcpp)
+ref <- fread('ref2d.csv')
+sourceCpp('peakalign.cpp')
+sourceCpp("one_over_k0_to_ccs.cpp")
+lib_path <- "libtimsdata.so"
+# load the raw data
+library(opentimsr)
+path = 'PATH_TO_RAW.d'
+setup_bruker_so("libtimsdata.so")
+all_columns = c('frame', 'intensity', 'mz', 'inv_ion_mobility')
+D = OpenTIMS(path)
+xy <- table2df(D, "MaldiFrameInfo")
+idx <- which(xy$MaldiFrameInfo$XIndexPos>3400&xy$MaldiFrameInfo$XIndexPos<3900&xy$MaldiFrameInfo$YIndexPos>1050&xy$MaldiFrameInfo$YIndexPos<1600)
+# set a batch size to avoid memory issues by process the data in batches
+total_frames <- dim(xy$MaldiFrameInfo[idx,])[1]
+frame <- xy$MaldiFrameInfo$Frame[idx]
+# this setting will make sure the data.frame's row number is within the limits
+batch <- floor(2e+09/nrow(ref))
+batchs <- ceiling(total_frames/batch)
+result <- list()
+for(i in 1:batchs){
+  upper <- min(total_frames,i*batch)
+  idx<- c(((i-1)*batch+1):upper)
+  data <- query(D, frames = frame[idx], columns = all_columns)
+  data <- as.data.table(data)
+  data[,ccs:=one_over_k0_to_ccs_parallel(data$inv_ion_mobility, rep(1,length(data$inv_ion_mobility)), data$mz, lib_path)]
+  resultt <- findpeakalign(data$mz,data$ccs,data$intensity,data$frame,ref$mz,ref$ccs, ppm = 20, ccs_shift = 0.03)
+  resultt <- as.data.table(resultt)
+  # perform TIC normalization
+  resultt[, TIC := sum(intensity, na.rm = TRUE), by = frame]
+  resultt[, normalized_intensity := as.numeric(intensity / TIC * .N), by = frame]
+  resultt[, TIC := NULL]
+  # perform RMS normalization
+  # resultt[, rms := sqrt(mean(sum(intensity^2, na.rm = TRUE))), by = frame]
+  # resultt[, normalized_intensity := as.numeric(intensity / rms), by = frame]
+  # resultt[, rms := NULL]
+  result[[i]] <- dcast(
+    resultt, 
+    frame ~ mz_ccs, 
+    value.var = "normalized_intensity", 
+    fun.aggregate = sum,
+    fill = 0)
+}
+result <- rbindlist(result,fill=T)
+for (col in names(result)) {
+  set(result, i = which(is.na(result[[col]])), j = col, value = 0)
+}
+# remove the peaks with zero_proportion larger than 95%
+zero_proportion <- result[, lapply(.SD, function(x) mean(x == 0)), .SDcols = 2:ncol(result)]
+columns_to_keep <- names(zero_proportion)[zero_proportion <= 0.95]
+cn <- columns_to_keep[!is.na(columns_to_keep)]
+result_filtered <- result[, ..cn, with = FALSE]
+result_filtered[,frame:=result$frame]
+# save the data with pixel location information
+coord <- fread('coord.csv')
+coord[,location:=paste0(coord$XIndexPos,'_',coord$YIndexPos)]
+result_filtered[,location:=coord$location[match(result_filtered$frame,coord$Frame)]]
+setcolorder(result_filtered, c("location", setdiff(names(result_filtered), "location")))
+result_filtered[, frame := NULL]
+fwrite(result_filtered,'ticmzccs.csv')
+```
+
+# Qualitative Peaks List
+
+Qualitative analysis is performed with public availiable data for MS1-CCS database.
+
+## Lipid annotation
+
+```{r}
+library(data.table)
+# load database
+lipid <- fread('lipidall.csv')
+# set positive mode
+lipid <- lipid[adducts%in%c('[M+H]','[M+Na]','[M+NH4]','[M+H-H2O]')]
+# load ref peaks
+ref <- fread('ticmzccs.csv')
+mz <- sapply(strsplit(colnames(ref)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(ref)[-1],'\\_'),function(x) as.numeric(x[2]))
+# align
+align <- enviGCMS::getalign(mz,lipid$mz,im,lipid$ccs,ppm=20,deltart = 5)
+anno <- cbind.data.frame(mz=mz[align$xid],im=im[align$xid],db_mz=align$mz2,db_im=align$rt2)
+lipidanno <- merge(anno,lipid,by.x = c('db_mz','db_im'),by.y = c('mz','ccs'))
+lipidanno <- lipidanno[!duplicated(lipidanno),]
+# save annotation result as csv file
+fwrite(lipidanno,'annoccs.csv')
+```
+
+## Metabolites annotation
+
+```{r}
+library(data.table)
+# load database for metabolites
+metabolite <- fread('metaall.csv')
+# set positive mode
+metabolite <- metabolite[adducts%in%c('[M+H]','[M+Na]','[M+NH4]','[M+H-H2O]')]
+# load ref peaks
+ref <- fread('ticmzccs.csv')
+mz <- sapply(strsplit(colnames(ref)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(ref)[-1],'\\_'),function(x) as.numeric(x[2]))
+# align
+align <- enviGCMS::getalign(mz,metabolite$mz,im,metabolite$ccs,ppm=20,deltart = 5)
+anno <- cbind.data.frame(mz=mz[align$xid],im=im[align$xid],db_mz=align$mz2,db_im=align$rt2)
+metaboliteanno <- merge(anno,metabolite,by.x = c('db_mz','db_im'),by.y = c('mz','ccs'))
+metaboliteanno <- metaboliteanno[!duplicated(lipidanno),]
+# save annotation result as csv file
+fwrite(metaboliteanno,'metaboliteannoccs.csv')
+```
+
+# Exploratory Analysis
 
 ## Peak statistics
 
 This part will show the distribution of peak numbers.
 
 ```{r}
-library(Cardinal)
-setCardinalBPPARAM(BPPARAM = MulticoreParam(30))
-setCardinalNChunks(30)
-one <- readRDS("processed.RDS")
-df <- intensity(one)
-df <- df[]
-dfx <- apply(df, 2, function(x) sum(x==0))
-xy <- coord(one)
-xy$np <- nrow(df)-dfx
-xy <- as.data.frame(xy)
+dt <- fread("ticmzccs.csv",header = T)
+dt[, np := rowSums(.SD != 0)]
+# extract location
+x <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[1]))
+y <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[2]))
+
+df <- cbind.data.frame(x=x,y=y,np=dt$np)
+
 library(ggplot2)
-ggplot(xy,aes(np)) +
+ggplot(df,aes(np)) +
   ggtitle('peak number for each pixel')+xlab('peak number')+
   geom_histogram(binwidth=1)+theme_bw()
-ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = np), size = 0.001)+theme_bw()
+ggplot(df, aes(x,y)) +
+  geom_point(aes(color = np), size = 0.001)+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
 ```
-
-## PCA Segmentation
-
-This part will perform PCA on MSI intensity data and retain PCs with accumulated variances larger than 80% variance in the data. Then subset 10000 pixels and perform a cluster number optimization to find the best numbers of cluster by silhouette method. The final step is visualization of the segmentation
-
-```{r}
-one <- readRDS("processed.RDS")
-# extract imaging intensity data
-df <- intensity(one)
-# bring the data into memory
-df <- df[]
-# perform PCA scale or not will strong influence the result, default FALSE
-# scale will loss macro structure
-# pca <- prcomp(df,scale. = T)
-pca <- prcomp(t(df))
-# calculate variances for each PC
-eigs <- pca$sdev^2
-# find the PC numbers with more than 80% variances in the data
-i <- 1
-cumulative_sum <- 0
-total_sum <- sum(eigs)
-threshold <- 0.8
-while (cumulative_sum / total_sum <= threshold && i <= 100) {
-  cumulative_sum <- cumulative_sum + eigs[i]
-  i <- i + 1
-}
-pc_scores <- pca$x
-sum(eigs[1:i]) / sum(eigs)
-
-# subset for cluster number optimization
-subdf <- pc_scores[,c(1:i)]
-library(ClusterR)
-opt = Optimal_Clusters_KMeans(subdf[sample(1:nrow(subdf),10000),], max_clusters = 10, plot_clusters = T, criterion = 'silhouette',initializer = 'optimal_init', tol_optimal_init = 0.2)
-# use the optimized number for cluster
-km = KMeans_arma(as.matrix(pc_scores), clusters = 5, n_iter = 10, seed_mode = "random_subset", verbose = T, CENTROIDS = NULL)
-pr = predict_KMeans(as.matrix(pc_scores), km)
-# display the Segmentation
-xy <- coord(one)
-plot(xy$x,xy$y,col=pr,cex=0.001,pch=19)
-legend('top',legend = unique(pr),col=unique(pr),pch=19,cex=1)
-```
-
-## Spatial scale
-
-This part will scale the data spatially with a scale of 5. In this case, the data analysis process will be much faster.
-
-```{r}
-library(Cardinal)
-one <- readRDS("processed.RDS")
-# extract imaging intensity data
-df <- intensity(one)
-# bring the data into memory
-df <- df[]
-n <- 5
-coords <- coord(one)
-x = coords$x
-y = coords$y
-z = t(df)
-
-x_min <- min(x)
-x_max <- max(x)
-y_min <- min(y)
-y_max <- max(y)
-
-new_x_size <- floor((x_max - x_min) / n) + 1
-new_y_size <- floor((y_max - y_min) / n) + 1
-x_new <- seq(x_min, x_max, length.out=new_x_size)
-y_new <- seq(y_min, y_max, length.out=new_y_size)
-new_coords <- expand.grid(x_new,y_new)
-
-new_features <- matrix(0, nrow=new_x_size*new_y_size, ncol=ncol(z))
-
-for (i in seq_len(nrow(new_coords))) {
-  x_idx <- which(abs(x - new_coords[i, 1]) <= n/2)
-  y_idx <- which(abs(y - new_coords[i, 2]) <= n/2)
-  idx <- intersect(x_idx, y_idx)
-  if (length(idx) > 1) {
-    new_features[i, ] <- colSums(z[idx, ])
-  }else if(length(idx) == 1) {
-    new_features[i, ] <- z[idx,]
-  }
-}
-
-non_zero_idx <- apply(new_features, 1, function(x) any(x != 0))
-new_features <- new_features[non_zero_idx, ]
-new_coords <- new_coords[non_zero_idx, ]
-
-coordx <- DataFrame(x=new_coords$Var1,y=new_coords$Var2)
-fdata <- MassDataFrame(mz=mz(one))
-pdata <- PositionDataFrame(run=factor(rep('one',nrow(coordx))), coord=coordx)
-
-out <- SpectralImagingExperiment(spectraData=t(new_features),
-                            featureData=fdata,
-                            pixelData=pdata)
-rcc_pk <- spatialKMeans(out, r=1,k=5,ncomp=11)
-image(rcc_pk)
-
-rcc_ssc <- spatialShrunkenCentroids(out, r=1, s=9,k=5)
-
-library(umap)
-vis <- umap(new_features,method="umap-learn",metric='cosine')
-library(dbscan)
-dbscan_result <- dbscan(vis$layout, eps = 0.5, minPts = 5)
-plot(x=coordx$x,y=coordx$y,col=dbscan_result$cluster,pch=13,cex=0.1)
-plot(vis$layout[,1],vis$layout[,2],col=dbscan_result$cluster,pch=13,cex=0.1);table(dbscan_result$cluster)
-
-```
-
 
 ## Visualization
 
-Save images for all ions.
+Save selected or all ion images for all reference peaks.
 
 ```{r}
-one <- readRDS("processed.RDS")
-# extract imaging intensity data
-df <- t(intensity(one))
-# bring the data into memory
-df <- df[]
-mz <- mz(one)
-xy <- coord(one)
-x=max(xy$x)-min(xy$x)+1
-y=max(xy$y)-min(xy$y)+1 
-# save images for all ions
-for(i in 1:ncol(one)){
-  dfx <- df[,i]
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt_values <- dt[, -1, with = FALSE]
+
+# location
+x <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[1]))
+y <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[2]))
+
+# m/z and im
+mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
+
+mzdemo <- c(703.5732,725.5543,739.4657,760.5806,788.6030,798.5397,826.5585)
+dt_filtered <- as.data.frame(dt_values[, .SD, .SDcols = mz%in%mzdemo])
+
+width=max(x)-min(x)+1
+height=max(y)-min(y)+1 
+# save images for all selected ions
+for(i in 1:ncol(dt_filtered)){
+  dfx <- dt_filtered[,i]
   norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
-  png(paste0('one',mz[i],'.png'),width = x, height = y)
+  png(paste0(colnames(dt_filtered)[i],'.png'),width = width, height = height)
   plot.new()
   par(mar=c(0,0,0,0))
-  plot.window(xlim = c(0,x), ylim = c(0,y), xaxs = "i", yaxs = "i", asp = NA)
-  points(xy$x-min(xy$x), xy$y-min(xy$y), pch = 16, col = grDevices::gray(1 - norm),cex=0.3)
+  plot.window(xlim = c(0,width), ylim = c(0,height), xaxs = "i", yaxs = "i", asp = NA)
+  points(x-min(x)+1, y-min(y)+1, pch = 16, col = grDevices::gray(1 - norm),cex=0.3)
   dev.off()
 }
 ```
 
-## Cluster analysis for peaks
+## Segmentation
 
-This part will compute cosine distance for m/z and then perform cluster analysis to find peaks groups with similar spatial distribution. The purpose of this analysis is to check ion based ROIs and mapping them back to samples if possible.
+Segmentation can find region of interests in MSI data.
+
+### PCA segmentation
+
+This part will use PCA to perform segmentation.
 
 ```{r}
-library(Cardinal)
-one <- readRDS("processed.RDS")
-# extract imaging intensity data
-df <- intensity(one)
-# bring the data into memory
-df <- df[]
-# compute cosine similarity
-Matrix <- as.matrix(df)
-sim <- Matrix / sqrt(rowSums(Matrix * Matrix))
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt_values <- dt[, -1, with = FALSE]
+
+# location
+x <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[1]))
+y <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[2]))
+
+# m/z and im
+mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
+
+mat <- t(dt_values)
+# SVD analysis
+library(irlba)
+svd_result <- irlba(t(mat), nv = 20)
+pca_scores <- t(mat) %*% svd_result$v
+# variance explained
+singular_values <- svd_result$d
+explained_variance <- singular_values^2 / sum(singular_values^2)
+# find the optimized cluster number
+library(ClusterR)
+opt = Optimal_Clusters_KMeans(as.data.frame(pca_scores[sample(c(1:ncol(mat)),10000),]), max_clusters = 10, plot_clusters = T, criterion = 'silhouette',initializer = 'optimal_init', tol_optimal_init = 0.2)
+# use the optimized number or self-defined number for cluster numbers
+km = KMeans_arma(as.matrix(pca_scores), clusters = 5, n_iter = 10, seed_mode = "random_subset", verbose = T, CENTROIDS = NULL)
+pr = predict_KMeans(as.matrix(pca_scores), km)
+# show the segmentation
+plot(pca_scores[,1],pca_scores[,2],col=pr,pch=13,cex=0.1,xlab = 'PC_1',ylab='PC_2')
+plot(x,y,col=pr,cex=0.001,pch=19)
+legend('topright',legend = unique(pr),col=unique(pr),pch=19,cex=1)
+```
+
+### UMAP segmentation
+
+This part will use UMAP to perform segmentation.
+
+```{r}
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt_values <- dt[, -1, with = FALSE]
+
+# location
+x <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[1]))
+y <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[2]))
+
+# m/z and im
+mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
+
+mat <- t(dt_values)
+reticulate::use_python('/home/yum/.local/share/r-miniconda/envs/r-reticulate/bin/python')
+Sys.setenv(NUMBA_NUM_THREADS = 30)
+library(reticulate)
+py_run_string("import os; print(os.environ['NUMBA_NUM_THREADS'])")
+library(umap)
+# reticulate::py_install('umap-learn')
+viz <- umap::umap(t(mat),method = 'umap-learn',metric = 'cosine')
+# 5min
+library(dbscan)
+dbscan_result <- dbscan(viz$layout, eps = 0.1, minPts = 5)
+plot(x=x,y=y,col=dbscan_result$cluster,pch=13,cex=0.1,xlab='UMAP_1',ylab='UMAP_2')
+plot(viz$layout[,1],viz$layout[,2],col=dbscan_result$cluster,pch=13,cex=0.1)
+```
+
+This part will save segmentation results as csv file with pixel locations.
+
+```{r}
+seg <- cbind.data.frame(x=x,y=y,pca=pr,umap=dbscan_result$cluster)
+fwrite(seg,'segmentation.csv')
+```
+
+## Ion cluster
+
+This part will use cosin/correlation similarity to find ion clusters with similar spatial distribution.
+
+```{r}
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt_values <- dt[, -1, with = FALSE]
+
+# m/z and im
+mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
+
+# segmentation
+seg <- fread('segmentation.csv',header=T)
+# cosin similarity
+Matrix <- t(dt_values)
+row_norms <- sqrt(rowSums(Matrix^2))
+sim <- sweep(Matrix, 1, row_norms, "/")
 sim <- sim %*% t(sim)
+# correlation distance
+# n <- ncol(Matrix)
+# Matrix_scaled <- scale(Matrix)
+# sim <- (Matrix_scaled %*% t(Matrix_scaled)) / (n - 1)
+
 # change to distance
 D_sim <- as.dist(1 - sim)
-# Hierarchical Clustering on m/z
+
 t <- hclust(D_sim)
-# set cutoff derived from glomeruli studies
-s <- cutree(t,h = 0.8)
-# only find the clusters with more than 10 ions
-name <- as.numeric(names(table(s)[table(s)>10]))
-# spilit the data
-split_matrices <- lapply(name, function(category) {
-  rows <- which(s == category)
-  subset_matrix <- df[rows, , drop = FALSE]
-  return(subset_matrix)
-})
-# sum the intensity from the same clusters
-summed_matrices <- lapply(split_matrices, function(subset_matrix) {
-  xxx <- apply(subset_matrix, 1, scale)
-  x <- rowSums(xxx)/ncol(xxx)
-  return(x)
-})
-# generate figures for cluster TIC maps
-result_matrix <- do.call(cbind, summed_matrices)
-xy23 <- coord(one)
-x=max(xy23$x)-min(xy23$x)+1
-y=max(xy23$y)-min(xy23$y)+1 
-
-dir.create('cluster')
-for(i in c(1:length(name))){
-  dfx <- result_matrix[,i]
-  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
-  png(paste0('cluster/cluster',i,'.png'),width = x, height = y)
-  plot.new()
-  par(mar=c(0,0,0,0))
-  plot.window(xlim = c(0,x), ylim = c(0,y), xaxs = "i", yaxs = "i", asp = NA)
-  points(xy23$x-min(xy23$x), xy23$y-min(xy23$y), pch = 16, col = grDevices::gray(1 - norm),cex=0.3)
-  dev.off()
-}
-```
-
-## Differential analysis
-
-### for ions
-
-```{r}
-one <- readRDS("processed.RDS")
-# extract imaging intensity data
-df <- t(intensity(one))
-# bring the data into memory
-df <- df[]
-# define pixel level groups
-xy$group <- c(rep('old',500000),rep('young',500000))
-library(genefilter)
-re <- colttests(df,factor(xy$group))
-
-# fold change
-fcall <- c()
-for (i in 1:2471){
-  t <- aggregate(df[,i],by=list(xy$group),mean)
-  fc <- t[1,2]/t[2,2]
-  fcall <- c(fcall,fc)
-}
-fcall[is.na(fcall)] <- 0
-re$adj <- p.adjust(re$p.value,'BH')
-
-# filter with p value and fold change
-sum(re$adj<0.05&!is.na(re$adj)&(fcall>1.5|fcall<0.67))/length(re$adj)
-```
-
-### for ion numbers
-
-```{r}
-xy$group <- c(rep('old',500000),rep('young',500000))
-dfx <- apply(df, 1, function(x) sum(x==0))
-dfx <- ncol(dfx)-dfx
-xy$np <- dfx
-
-ggplot(xy,aes(np)) +
-  ggtitle('peak number for each pixel')+
-  geom_histogram(binwidth=1)+theme_bw()
-
-num <- apply(df,2,function(x) sum(x!=0))
-num <- data.frame(num=num)
-ggplot(num,aes(num)) +
-  ggtitle('pixel number for each peaks')+
-  geom_histogram()+theme_bw()
-
-ggplot(xy, aes(x = np, y = group)) + 
-  ggtitle('pixel number for different group')+
-  geom_density_ridges()+theme_bw()
-# t.test for pixel number
-for(i in c(1:length(unique(xy$group)))){
-  xyi <- xy[xy$cluster==unique(xy$group)[i],]
-  print(t.test(xyi$np~xyi$group))
-}
-```
-
-### for ion distance
-
-```{r}
-library(distances)
-# Check ion average distance for one group called dfyoung
-d2 <- d1 <- c()
-for(i in c(1:2471)){
-  xyi <- xy[dfyoung[,i]!=0,]
-  # set pixel number 0.5-30% of all pixels to ensure sparsity
-  if(nrow(xyi)>5000&nrow(xyi)<300000){
-    dt <- distances(xyi[,c(1,2)])
-    #d1 <- c(d1,median(dt))
-    d2 <- c(d2,mean(dt))
-  }else{
-    d2 <- c(d2,NA)
-  }
-}
-# Check ion average distance for one group called dfold
-d4 <- d3 <- c()
-for(i in c(1:2471)){
-  xyi <- xy[dfold[,i]!=0,]
-  # set pixel number 0.5-30% of all pixels to ensure sparsity
-  if(nrow(xyi)>5000&nrow(xyi)<300000){
-    dt <- distances(xyi[,c(1,2)])
-    #d1 <- c(d1,median(dt))
-    d4 <- c(d4,mean(dt))
-  }else{
-    d4 <- c(d4,NA)
-  }
-}
-# t test and visulization of differences
-xx <- cbind.data.frame(dis=c(d2,d4),group=c(rep('young',2471),rep('old',2471)))
-library(ggplot2)
-library(ggridges)
-xx <- xx[complete.cases(xx),]
-ggplot(xx, aes(dis,group)) +
-  geom_density_ridges()+theme_bw()
-
-t.test(xx$dis~xx$group)
+# set cutoff
+s <- cutree(t,h = 0.6)
+# output ion class
+ioncluster <- cbind.data.frame(mz,im,class=s)
+fwrite(ioncluster,'ioncluster.csv')
 ```
 
 ## Reactomics analysis
@@ -375,43 +427,49 @@ t.test(xx$dis~xx$group)
 This part will extract PMDs for reaction level check.
 
 ```{r}
-library(Cardinal)
 library(pmd)
-one <- readRDS("one.RDS")
-dfall <- intensity(one)
-dfall <- dfall[]
-ms <- mz(one)
-df <- getpmddf(ms,pmd=c(14.015,14.016,15.995,15.996,2.015,2.016,18.010,18.011),digits = 3)
-# get coord of data and group factor
-xy <- coord(one)
-xy$factor <- pixelData(one)$factor
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt_values <- dt[, -1, with = FALSE]
+
+# m/z and im
+mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
+
+# islet ions
+seg <- fread('segmentation.csv',header=T)
+isletdf <- fread('isletcheckall.csv',header=T)
+df <- getpmddf(mz,pmd=c(14.015,14.016,15.995,15.996,2.015,2.016,18.010,18.011),digits = 3,group = ifelse(colnames(dt)[-1]%in%isletdf$`islet`,1,0))
+xy <- data.frame(x=x,y=y)
+xy$factor <- seg$umap
 # pick up ions from four common PMDs
-df$diff3 <- round(dfx$diff,3)
+df$diff3 <- round(df$diff,3)
 df3 <- df[df$diff3==14.015|df$diff3==14.016,]
 df4 <- df[df$diff3==15.995|df$diff3==15.996,]
 df5 <- df[df$diff3==2.015|df$diff3==2.016,]
 df6 <- df[df$diff3==18.010|df$diff3==18.011,]
 # normalize ion intensity
-dfall <- apply(dfall,1,function(x) x/max(x))
+dfall <- apply(dt_values,1,function(x) x/max(x))
 dfall[is.na(dfall)] <- 0
+dfall <- t(dfall)
 # PMD14.016
-dfms1 <- dfall[,ms%in%df3$ms1]
-dfms2 <- dfall[,ms%in%df3$ms2]
+dfms1 <- dfall[,mz%in%df3$ms1]
+dfms2 <- dfall[,mz%in%df3$ms2]
 xy$pmd14h <- apply(dfms1, 1, sum)
 xy$pmd14l <- apply(dfms2, 1, sum)
 # PMD15.995
-dfms1 <- dfall[,ms%in%df4$ms1]
-dfms2 <- dfall[,ms%in%df4$ms2]
+dfms1 <- dfall[,mz%in%df4$ms1]
+dfms2 <- dfall[,mz%in%df4$ms2]
 xy$pmd16h <- apply(dfms1, 1, sum)
 xy$pmd16l <- apply(dfms2, 1, sum)
 # PMD2.016
-dfms1 <- dfall[,ms%in%df5$ms1]
-dfms2 <- dfall[,ms%in%df5$ms2]
+dfms1 <- dfall[,mz%in%df5$ms1]
+dfms2 <- dfall[,mz%in%df5$ms2]
 xy$pmd2h <- apply(dfms1, 1, sum)
 xy$pmd2l <- apply(dfms2, 1, sum)
 # PMD18.011
-dfms1 <- dfall[,ms%in%df6$ms1]
-dfms2 <- dfall[,ms%in%df6$ms2]
+dfms1 <- dfall[,mz%in%df6$ms1]
+dfms2 <- dfall[,mz%in%df6$ms2]
 xy$pmd18h <- apply(dfms1, 1, sum)
 xy$pmd18l <- apply(dfms2, 1, sum)
 # combine ion pairs
@@ -437,48 +495,457 @@ summary(lm(xy$pmd16l~xy$factor))
 summary(lm(xy$pmd18l~xy$factor))
 
 # check reaction level changes by t test
-t.test(xy$pmd2~xy$factor)
-t.test(xy$pmd14~xy$factor)
-t.test(xy$pmd16~xy$factor)
-t.test(xy$pmd18~xy$factor)
+anova(lm(xy$pmd2~xy$factor))
+anova(lm(xy$pmd14~xy$factor))
+anova(lm(xy$pmd16~xy$factor))
+anova(lm(xy$pmd18~xy$factor))
+
 ```
 
-This part will be used to check if there were spatial changes with reaction.
+This part will be used to check if there were spatial changes for certain reaction.
 
 ```{r}
 library(patchwork)
+library(ggplot2)
 a <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd2l), size = 0.001)+theme_bw()+ggtitle('PMD 2.02Da low')
+  geom_point(aes(color = pmd2l), size = 0.001)+ggtitle('PMD 2.02Da low')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
 b <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd2h), size = 0.001)+theme_bw()+ggtitle('PMD 2.02Da high')
+  geom_point(aes(color = pmd2h), size = 0.001)+ggtitle('PMD 2.02Da high')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
 c <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd14l), size = 0.001)+theme_bw()+ggtitle('PMD 14.02Da low')
+  geom_point(aes(color = pmd14l), size = 0.001)+ggtitle('PMD 14.02Da low')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
 d <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd14h), size = 0.001)+theme_bw()+ggtitle('PMD 14.02Da high')
+  geom_point(aes(color = pmd14h), size = 0.001)+ggtitle('PMD 14.02Da high')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
 e <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd16l), size = 0.001)+theme_bw()+ggtitle('PMD 15.99Da low')
+  geom_point(aes(color = pmd16l), size = 0.001)+ggtitle('PMD 16.00Da low')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
 f <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd16h), size = 0.001)+theme_bw()+ggtitle('PMD 15.99Da high')
+  geom_point(aes(color = pmd16h), size = 0.001)+ggtitle('PMD 16.00Da high')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
 g <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd18l), size = 0.001)+theme_bw()+ggtitle('PMD 18.00Da low')
+  geom_point(aes(color = pmd18l), size = 0.001)+ggtitle('PMD 18.01Da low')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
 h <- ggplot(xy, aes(x,y)) +
-  geom_point(aes(color = pmd18h), size = 0.001)+theme_bw()+ggtitle('PMD 18.00Da high')
-a/b
-c/d
-e/f
-g/h
+  geom_point(aes(color = pmd18h), size = 0.001)+ggtitle('PMD 18.01Da high')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
+a|b
+c|d
+e|f
+g|h
 ```
 
-## Anatomy registration
+This part will be used to check locations for certain reaction.
 
-### MSI2TIC
+```{r}
+library(patchwork)
+library(ggplot2)
+a <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd2), size = 0.001)+ggtitle('PMD 2.02Da')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
+b <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd14), size = 0.001)+ggtitle('PMD 14.02Da')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
+c <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd16), size = 0.001)+ggtitle('PMD 16.00Da')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
+d <- ggplot(xy, aes(x,y)) +
+  geom_point(aes(color = pmd18), size = 0.001)+ggtitle('PMD 18.01Da')+
+  scale_color_gradient(low = "white", high = "red") + theme_void()
+a|b|c|d
+```
+
+
+## Differential analysis
+
+This part will check the changes at peaks level for ion intesnity, ion numbers, as well as ion distances.
+
+### for ions
+
+```{r}
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt_values <- dt[, -1, with = FALSE]
+
+# m/z and im
+mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
+
+# define pixel level groups, here using segmentation
+seg <- fread('segmentation.csv',header=T)
+library(genefilter)
+re <- colFtests(as.matrix(dt_values),factor(ifelse(seg$umap==2,'islet','non-islet')))
+
+# fold change
+fcall <- c()
+df <- as.matrix(dt_values)
+group <- factor(ifelse(seg$umap==2,'islet','non-islet'))
+for (i in 1:ncol(dt_values)){
+  t <- aggregate(df[,i],by=list(group),mean)
+  fc <- t[1,2]/t[2,2]
+  fcall <- c(fcall,fc)
+}
+fcall[is.na(fcall)] <- 0
+re$adj <- p.adjust(re$p.value,'BH')
+
+# filter with p value and fold change
+sum(re$adj<0.05&!is.na(re$adj)&(fcall>1.5|fcall<0.67))/length(re$adj)
+```
+
+### for ion numbers
+
+```{r}
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt[, np := rowSums(.SD != 0)]
+seg <- fread('segmentation.csv',header=T)
+seg$np <- dt$np
+seg$islet <- factor(ifelse(seg$umap==2,'islet','non-islet'))
+library(ggplot2)
+ggplot(seg,aes(np)) +
+  ggtitle('peak number for each pixel')+
+  geom_histogram(binwidth=1)+theme_bw()
+
+dt_values <- as.matrix(dt[, -1, with = FALSE])
+num <- apply(dt_values,2,function(x) sum(x!=0))
+num <- data.frame(num=num)
+ggplot(num,aes(num)) +
+  ggtitle('pixel number for each peaks')+
+  geom_histogram()+theme_bw()
+
+ggplot(seg, aes(x = np, y = islet)) + 
+  ggtitle('pixel number for different group')+
+  geom_density_ridges()+theme_bw()
+# t.test for pixel number
+for(i in c(1:length(unique(seg$pca)))){
+  xyi <- seg[seg$pca==i,]
+  if(length(unique(xyi$islet))>1){
+    print(t.test(xyi$np~xyi$islet))
+  }
+}
+```
+
+### for ion distance
+
+```{r}
+library(distances)
+# Check ion average distance for one group called islet
+dfislet <- dt_values[seg$umap==3,]
+dfnoislet <- dt_values[seg$umap!=3,]
+d2 <- d1 <- c()
+for(i in c(1:length(mz))){
+  xyi <- as.data.frame(seg)[dfislet[,i]!=0,]
+  # set pixel number 0.5-30% of all pixels to ensure sparsity
+  if(nrow(xyi)>0.005*nrow(dfislet)&nrow(xyi)<0.9*nrow(dfislet)){
+    dt <- distances(xyi[,c(1,2)])
+    #d1 <- c(d1,median(dt))
+    d2 <- c(d2,mean(dt))
+  }else{
+    d2 <- c(d2,NA)
+  }
+}
+# Check ion average distance for one group called dfold
+d4 <- d3 <- c()
+for(i in c(1:length(mz))){
+  xyi <- as.data.frame(seg)[dfnoislet[,i]!=0,]
+  # set pixel number 0.5-30% of all pixels to ensure sparsity
+  if(nrow(xyi)>0.005*nrow(dfnoislet)&nrow(xyi)<0.9*nrow(dfnoislet)){
+    dt <- distances(xyi[,c(1,2)])
+    #d1 <- c(d1,median(dt))
+    d4 <- c(d4,mean(dt))
+  }else{
+    d4 <- c(d4,NA)
+  }
+}
+# t test and visulization of differences
+xx <- cbind.data.frame(dis=c(d2,d4),group=c(rep('islet',length(d2)),rep('nosilet',length(d4))))
+library(ggplot2)
+library(ggridges)
+xx <- xx[complete.cases(xx),]
+ggplot(xx, aes(dis,group)) +
+  geom_density_ridges()+theme_bw()
+
+t.test(xx$dis~xx$group)
+```
+
+# Biological Interpretation
+
+## Molecular Network
+
+```{r}
+library(pmd)
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt_values <- dt[, -1, with = FALSE]
+
+# m/z and im
+mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
+
+# ions
+seg <- fread('segmentation.csv',header=T)
+anno <- fread('isletannoccs.csv')
+ioncluster <- fread('ioncluster.csv')
+library(pmd)
+data("keggrall")
+hfpmd <- as.numeric(names(table(keggrall$pmd)[table(keggrall$pmd)>mean(table(keggrall$pmd))]))
+df <- getpmddf(mz,group = ioncluster$class,pmd=hfpmd,digits = 3)
+
+subdf <- df[df$net=='local',]
+subdf2 <- df[df$net!='local',]
+library(igraph)
+library(ggraph)
+library(tidygraph)
+net <- graph_from_data_frame(df)
+graph <- as_tbl_graph(net)
+ggraph(graph, layout = 'fr') +
+   geom_edge_link(aes(color = net))  + theme_void()
+
+net <- graph_from_data_frame(subdf)
+graph <- as_tbl_graph(net)
+ggraph(graph, layout = 'fr') + geom_edge_link(aes(color = diff2)) +theme_void()
+
+net <- graph_from_data_frame(subdf2)
+graph <- as_tbl_graph(net)
+ggraph(graph, layout = 'fr') + geom_edge_link(aes(color = diff2)) +theme_void()
+
+df$anno1 <- anno$name[match(df$ms1,anno$mz)]
+df$anno2 <- anno$name[match(df$ms2,anno$mz)]
+
+dfanno <- df[complete.cases(df),]
+
+net <- graph_from_data_frame(dfanno)
+graph <- as_tbl_graph(net)
+ggraph(graph, layout = 'fr') + geom_edge_link(aes(color = net)) +theme_void()
+
+fwrite(dfanno,'annonet.csv')
+```
+
+### Shiny application
+
+Please run the following chunk to get the network csv file.
+
+```{r}
+library(pmd)
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt_values <- dt[, -1, with = FALSE]
+
+# m/z and im
+mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
+
+# ions
+ioncluster <- fread('ioncluster.csv')
+library(pmd)
+data("keggrall")
+hfpmd <- as.numeric(names(table(keggrall$pmd)[table(keggrall$pmd)>mean(table(keggrall$pmd))]))
+df <- rmwf::getpmddf2(dt,group = ioncluster$class,pmd=hfpmd,digits = 3)
+fwrite(df,'msinet.csv')
+```
+
+Please run the following chunk to get figures for ions.
+
+```{r}
+dir.create('fig')
+ions <- unique(c(df$from,df$to))
+mz <- sapply(strsplit(colnames(dt_values),'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt_values),'\\_'),function(x) as.numeric(x[2]))
+name <- paste0(mz,'_',round(im))
+dt_values <- as.data.frame(dt_values)
+sub <- dt_values[,match(ions,name)]
+colnames(sub) <- ions
+x <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[1]))
+y <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[2]))
+width=max(x)-min(x)+1
+height=max(y)-min(y)+1
+for(i in 1:ncol(sub)){
+  dfx <- sub[,i]
+  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
+  library(RColorBrewer)
+  color_palette <- colorRamp(c("skyblue", "red"))
+  color_sequence <- rgb(color_palette(norm)/255,alpha=1)
+  png(paste0('fig/',colnames(sub)[i],'.png'),width = width, height = height)
+  plot.new()
+  par(mar=c(0,0,0,0))
+  plot.window(xlim = c(0,width), ylim = c(0,height), xaxs = "i", yaxs = "i", asp = NA)
+  points(x-min(x)+1, y-min(y)+1, pch = 16, col = color_sequence,cex=0.3)
+  dev.off()
+}
+```
+
+You can start the shiny app by the following code:
+
+```{r}
+rmwf::runmsinet()
+```
+
+Then you could update network file (msinet.csv), annotation file (annoccs.csv) and images to generate network visualization for biological people.
+
+## ROI specific analysis
+
+### Ion cluster for ions in certain segmentation
+
+```{r}
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt_values <- dt[, -1, with = FALSE]
+
+# m/z and im
+mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
+
+# segmentation
+seg <- fread('segmentation.csv',header=T)
+
+subdt <- dt_values[seg$umap==2,]
+x <- seg$x
+y <- seg$y
+
+Matrix <- t(subdt)
+
+# correlation distance
+n <- ncol(Matrix)
+Matrix_scaled <- scale(Matrix)
+sim <- (Matrix_scaled %*% t(Matrix_scaled)) / (n - 1)
+D_sim <- as.dist(1 - sim)
+# D_sim <- as.dist(1 - sim^2)
+
+# cosine distance
+# row_norms <- sqrt(rowSums(Matrix^2))
+# sim <- sweep(Matrix, 1, row_norms, "/")
+# sim <- sim %*% t(sim)
+# # change to distance
+# D_sim <- as.dist(1 - sim)
+
+t <- hclust(D_sim)
+# set cutoff
+s <- cutree(t,h = 0.8)
+# only find the clusters with more than 10 ions
+name <- as.numeric(names(table(s)[table(s)>10]))
+
+Matrix <- t(dt_values)
+split_matrices <- lapply(name, function(category) {
+  rows <- which(s == as.numeric(category))
+  subset_matrix <- Matrix[rows, , drop = FALSE]
+  return(subset_matrix)
+})
+# sum the intensity from the same clusters
+summed_matrices <- lapply(split_matrices, function(subset_matrix) {
+  xxx <- apply(subset_matrix, 1, scale)
+  x <- rowSums(xxx)/ncol(xxx)
+  return(x)
+})
+
+# generate figures for cluster TIC maps
+result_matrix <- do.call(cbind, summed_matrices)
+
+clpan <- cbind.data.frame(x=x,y=y,result_matrix)
+
+dir.create('cluster')
+for(i in c(1:length(name))){
+  dfx <- result_matrix[,i]
+  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
+  color_palette <- colorRamp(c("yellow", "red"))
+  color_sequence <- rgb(color_palette(norm)/255,alpha=1)
+  xlim=max(x)-min(x)+1
+  ylim=max(y)-min(y)+1
+
+  png(paste0('cluster/cluster',name[i],'.png'),width=xlim,height = ylim)
+  plot.new()
+  par(mar=c(0,0,0,0))
+  plot.window(xlim = c(0,xlim), ylim = c(0,ylim), xaxs = "i", yaxs = "i", asp = NA)
+  points(x-min(x)+1, y-min(y)+1, pch = 16, col = color_sequence,cex=0.3)
+  dev.off()
+}
+
+rows <- which(s==390)
+result_matrix <- Matrix[rows, , drop = FALSE]
+for(i in c(1:nrow(result_matrix))){
+  dfx <- result_matrix[i,]
+  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
+  color_palette <- colorRamp(c("yellow", "red"))
+  color_sequence <- rgb(color_palette(norm)/255,alpha=1)
+  xlim=max(x)-min(x)+1
+  ylim=max(y)-min(y)+1 
+  png(paste0('cluster/ion',colnames(dt_values)[rows[i]],'.png'),width=xlim,height = ylim)
+  plot.new()
+  par(mar=c(0,0,0,0))
+  plot.window(xlim = c(0,xlim), ylim = c(0,ylim), xaxs = "i", yaxs = "i", asp = NA)
+  points(x-min(x)+1, y-min(y)+1, pch = 16, col = color_sequence,cex=0.3)
+  dev.off()
+}
+
+islet <- rownames(Matrix)[s==390]
+ions <- Matrix[s==390,]
+factor <- ifelse(seg$umap==2,'islet','non-islet')
+re <- apply(ions,1,function(x) median(x[seg$umap==2])>median(x))
+mz <- sapply(strsplit(islet[re],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(islet[re],'\\_'),function(x) as.numeric(x[2]))
+isletdf <- cbind.data.frame(mz,im,islet=islet[re])
+write.csv(isletdf,'isletcheckall.csv')
+```
+
+
+# Scale the spatial resolution
+
+```{r}
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt_values <- dt[, -1, with = FALSE]
+
+# location
+dt$x <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[1]))
+dt$y <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[2]))
+
+x_min <- min(dt$x, na.rm = TRUE)
+x_max <- max(dt$x, na.rm = TRUE)
+y_min <- min(dt$y, na.rm = TRUE)
+y_max <- max(dt$y, na.rm = TRUE)
+
+# scale factor setting
+n <- 5
+new_x_size <- floor((x_max - x_min) / n) + 1
+new_y_size <- floor((y_max - y_min) / n) + 1
+x_new <- seq(x_min, x_max, length.out = new_x_size)
+y_new <- seq(y_min, y_max, length.out = new_y_size)
+new_coords <- as.data.table(expand.grid(x_new, y_new))
+setnames(new_coords, c("x", "y"))
+
+dt[, new_x := round((x - x_min) / n) * n + x_min]
+dt[, new_y := round((y - y_min) / n) * n + y_min]
+
+new_features_dt <- dt[, lapply(.SD, function(x) sum(x, na.rm = TRUE)), by = .(new_x, new_y), .SDcols = -c("location", "x", "y")]
+
+new_features_dt <- new_features_dt[rowSums(new_features_dt[, -c("new_x", "new_y"), with = FALSE]) != 0]
+# generate scaled data and coords
+new_features <- as.matrix(new_features_dt[, -c("new_x", "new_y"), with = FALSE])
+new_coords <- new_features_dt[, .(new_x, new_y)]
+```
+
+# Anatomy co-registration
+
+## MSI2TIC
 
 This step will generate image for MSI with outline for registration purpose.
 
 ```{r}
-library(Cardinal)
-one <- readRDS("processed.RDS")
-xy <- coord(one)
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+df <- dt[, -1, with = FALSE]
+
+# location
+x <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[1]))
+y <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[2]))
+
+# m/z and im
+mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
+
+xy <- data.frame(x=x,y=y)
+
 # pixel by pixel for coords
 nxy <- cbind.data.frame(x=xy$x-min(xy$x)+1,y=xy$y-min(xy$y)+1)
 
@@ -486,7 +953,7 @@ nxy <- cbind.data.frame(x=xy$x-min(xy$x)+1,y=xy$y-min(xy$y)+1)
 outline <- 50
 # fill intensity
 tic <- summarizePixels(one, c(tic="mean"))
-nxy$i <- as.numeric(iData(tic))
+nxy$i <- apply(df,1,sum)
 # add outline
 nnxy <- cbind.data.frame(x=xy$x-min(xy$x)+1+outline,y=xy$y-min(xy$y)+outline+1)
 write.csv(nnxy,'outline.csv')
@@ -499,7 +966,7 @@ points(nxy$x, nxy$y, pch = 16, col = nxy$i,cex=0.3)
 dev.off()
 ```
 
-### Geojson2img
+## Geojson2img
 
 This step will adjust geojson from QuPath annotation to the same scale with MSI and output image for registration.
 
@@ -519,7 +986,7 @@ plot(geojson$geometry,setParUsrBB=T,col = 'green',xlim=c(min(coords[,1])-rangew/
 dev.off()
 ```
 
-### Rotate image
+## Rotate image
 
 This step will rotate the image for registration.
 
@@ -530,7 +997,7 @@ new <- image_read("he.png")
 image_rotate(new, 180) %>% image_write("he.png")
 ```
 
-### H&EMSIReg
+## H&EMSIReg
 
 Use simpleITK for registration.
 
@@ -573,7 +1040,7 @@ WriteTransform(final_transform, "reg.tfm")
 # image_viewer$Execute((1-alpha)*fixed_image + alpha*moving_resampled)
 ```
 
-### Coordsreg
+## Coordsreg
 
 This step will convert coords by the registration.
 
@@ -623,7 +1090,7 @@ plot(sf::st_geometry(sfobj),setParUsrBB=T,col = 'green')
 # for(i in c(107:183)) st_sfc(st_multipolygon(re[i]))
 ```
 
-### Anno2MSI
+## Anno2MSI
 
 This step will map the annotation back to MSI pixel.
 
@@ -657,20 +1124,21 @@ pixel_coords$numb <- num
 write.csv(pixel_coords,'anno.csv')
 ```
 
-### MSI viz
+## MSI viz
 
 Display the annotated MSI region.
 
 ```{r}
 anno <- read.csv('anno.csv',row.names = 1)
-annomsi <- one[,anno$i]
-rcc_pca <- PCA(annomsi, ncomp=70)
-pc_scores <- DataFrame(resultData(rcc_pca, 1, "scores"))
+annomsi <- df[anno$i,]
+library(irlba)
+svd_result <- irlba(df, nv = 20)
+pca_scores <- df %*% svd_result$v
+
 library(ClusterR)
-opt = Optimal_Clusters_KMeans(as.data.frame(pc_scores), max_clusters = 10, plot_clusters = T, criterion = 'silhouette',initializer = 'optimal_init', tol_optimal_init = 0.2)
+opt = Optimal_Clusters_KMeans(as.data.frame(pca_scores), max_clusters = 10, plot_clusters = T, criterion = 'silhouette',initializer = 'optimal_init', tol_optimal_init = 0.2)
 km = KMeans_arma(as.matrix(pc_scores), clusters = 2, n_iter = 10, seed_mode = "random_subset", verbose = T, CENTROIDS = NULL)
 pr = predict_KMeans(as.matrix(pc_scores), km)
-xy <- coord(annomsi)
 plot(xy$x,xy$y,col=pr,cex=.1)
 
 plot(annomsi)
