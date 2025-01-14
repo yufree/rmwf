@@ -215,16 +215,16 @@ srm <- getrtmz(path)
 srm2 <- getrtmz2(path)
 
 # get peak list
-mzrt <- enviGCMS::getmzrt(srm)
-mzrt2 <- enviGCMS::getmzrt(srm2)
+mzrt <- rmwf::getmzrt(srm)
+mzrt2 <- rmwf::getmzrt(srm2)
 ```
 
-If you want to skip parameter optimization for xcms, you could use function from `enviGCMS` package. You could check this [paper](https://www.nature.com/articles/nprot.2011.454) for those parameters.
+If you want to skip parameter optimization for xcms, you could use function from `rmwf`` package. You could check this [paper](https://www.nature.com/articles/nprot.2011.454) for those parameters.
 
 ```{r}
 # pmethod could be 'hplcorbitrap', 'uplcorbitrap', 'hplcqtof', 'hplchqtof', 'uplcqtof', 'uplchqtof'
-mzrt3 <- enviGCMS:::getdata(path,pmethod = 'hplchqtof')
-mzrt3 <- enviGCMS::getmzrt(mzrt3)
+mzrt3 <- rmwf::getdata(path,pmethod = 'hplchqtof')
+mzrt3 <- rmwf::getmzrt(mzrt3)
 ```
 
 ## Compare
