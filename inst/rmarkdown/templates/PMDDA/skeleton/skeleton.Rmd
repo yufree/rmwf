@@ -222,7 +222,7 @@ This chunk is used to generate peaks list related csv/objects files for further 
 path <- 'data/'
 srm <- getrtmz(path)
 # back up peak list as csv file and xcmsSet object
-mzrt <- enviGCMS::getmzrt(srm, name = 'srm')
+mzrt <- rmwf::getmzrt(srm, name = 'srm')
 ```
 
 # Peaks filtering
