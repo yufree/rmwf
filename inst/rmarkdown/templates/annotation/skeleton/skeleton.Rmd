@@ -117,7 +117,7 @@ Pmd is a redundant peak detection tools for LC/GC-MS peaks list data. You will g
 data("srmxset")
 library(pmd)
 # pmd
-mzrt <- enviGCMS::getmzrt(srmxset)
+mzrt <- rmwf::getmzrt(srmxset)
 # get the peaklist
 mzrt <- pmd::globalstd(mzrt,ng=NULL)
 # mass formula assign
@@ -322,15 +322,15 @@ data("qtof")
 # this is the sepctra of HMDB0034004
 file <- system.file("extdata", "challenge-msms.mgf", package = "rmwf")
 # dot product similarity
-anno1 <- enviGCMS::dotpanno(file,db = qtof)
+anno1 <- rmwf::dotpanno(file,db = qtof)
 unique(anno1$name)
 # X rank algorithm
-anno2 <- enviGCMS::xrankanno(file,db = qtof)
+anno2 <- rmwf::xrankanno(file,db = qtof)
 unique(anno2$name)
 # pmd msms annotation
 anno3 <- pmd::pmdanno(file,db=qtof)
 unique(anno2$name)
-enviGCMS::plotanno(anno3)
+rmwf::plotanno(anno3)
 ```
 
 ### Rformassspectrometry
