@@ -247,6 +247,15 @@ metaboliteanno <- metaboliteanno[!duplicated(lipidanno),]
 fwrite(metaboliteanno,'metaboliteannoccs.csv')
 ```
 
+### mzccsanno Shiny application
+
+You could also use a Shiny application to make annotation with GUI.
+
+```{r}
+rmwf::runmzccsanno()
+```
+
+
 # Exploratory Analysis
 
 ## Peak statistics
@@ -365,7 +374,7 @@ mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1])
 im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
 
 mat <- t(dt_values)
-reticulate::use_python('/home/yum/.local/share/r-miniconda/envs/r-reticulate/bin/python')
+# reticulate::install_miniconda()
 Sys.setenv(NUMBA_NUM_THREADS = 30)
 library(reticulate)
 py_run_string("import os; print(os.environ['NUMBA_NUM_THREADS'])")
@@ -723,7 +732,7 @@ ggraph(graph, layout = 'fr') + geom_edge_link(aes(color = net)) +theme_void()
 fwrite(dfanno,'annonet.csv')
 ```
 
-### Shiny application
+### MSInet Shiny application
 
 Please run the following chunk to get the network csv file.
 
