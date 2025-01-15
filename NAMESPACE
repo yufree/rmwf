@@ -3,7 +3,6 @@
 export(dotpanno)
 export(getdata)
 export(getdata2)
-export(getmspmd)
 export(getmw)
 export(getmwfactor)
 export(getmwlist)
