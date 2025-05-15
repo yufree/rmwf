@@ -203,7 +203,7 @@ fwrite(result_filtered,'ticmzccs.csv')
 
 # Qualitative Peaks List
 
-Qualitative analysis is performed with public availiable data for MS1-CCS database.
+Qualitative analysis is performed with public available data for MS1-CCS database.
 
 ## Lipid annotation
 
@@ -431,6 +431,108 @@ ioncluster <- cbind.data.frame(mz,im,class=s)
 fwrite(ioncluster,'ioncluster.csv')
 ```
 
+###  ROI specific Ion cluster for ions in certain segmentation
+
+```{r}
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt_values <- dt[, -1, with = FALSE]
+
+# m/z and im
+mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
+
+# segmentation
+seg <- fread('segmentation.csv',header=T)
+
+subdt <- dt_values[seg$umap==2,]
+x <- seg$x
+y <- seg$y
+
+Matrix <- t(subdt)
+
+# correlation distance
+n <- ncol(Matrix)
+Matrix_scaled <- scale(Matrix)
+sim <- (Matrix_scaled %*% t(Matrix_scaled)) / (n - 1)
+D_sim <- as.dist(1 - sim)
+# D_sim <- as.dist(1 - sim^2)
+
+# cosine distance
+# row_norms <- sqrt(rowSums(Matrix^2))
+# sim <- sweep(Matrix, 1, row_norms, "/")
+# sim <- sim %*% t(sim)
+# # change to distance
+# D_sim <- as.dist(1 - sim)
+
+t <- hclust(D_sim)
+# set cutoff
+s <- cutree(t,h = 0.8)
+# only find the clusters with more than 10 ions
+name <- as.numeric(names(table(s)[table(s)>10]))
+
+Matrix <- t(dt_values)
+split_matrices <- lapply(name, function(category) {
+  rows <- which(s == as.numeric(category))
+  subset_matrix <- Matrix[rows, , drop = FALSE]
+  return(subset_matrix)
+})
+# sum the intensity from the same clusters
+summed_matrices <- lapply(split_matrices, function(subset_matrix) {
+  xxx <- apply(subset_matrix, 1, scale)
+  x <- rowSums(xxx)/ncol(xxx)
+  return(x)
+})
+
+# generate figures for cluster TIC maps
+result_matrix <- do.call(cbind, summed_matrices)
+
+clpan <- cbind.data.frame(x=x,y=y,result_matrix)
+
+dir.create('cluster')
+for(i in c(1:length(name))){
+  dfx <- result_matrix[,i]
+  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
+  color_palette <- colorRamp(c("yellow", "red"))
+  color_sequence <- rgb(color_palette(norm)/255,alpha=1)
+  xlim=max(x)-min(x)+1
+  ylim=max(y)-min(y)+1
+
+  png(paste0('cluster/cluster',name[i],'.png'),width=xlim,height = ylim)
+  plot.new()
+  par(mar=c(0,0,0,0))
+  plot.window(xlim = c(0,xlim), ylim = c(0,ylim), xaxs = "i", yaxs = "i", asp = NA)
+  points(x-min(x)+1, y-min(y)+1, pch = 16, col = color_sequence,cex=0.3)
+  dev.off()
+}
+
+rows <- which(s==390)
+result_matrix <- Matrix[rows, , drop = FALSE]
+for(i in c(1:nrow(result_matrix))){
+  dfx <- result_matrix[i,]
+  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
+  color_palette <- colorRamp(c("yellow", "red"))
+  color_sequence <- rgb(color_palette(norm)/255,alpha=1)
+  xlim=max(x)-min(x)+1
+  ylim=max(y)-min(y)+1 
+  png(paste0('cluster/ion',colnames(dt_values)[rows[i]],'.png'),width=xlim,height = ylim)
+  plot.new()
+  par(mar=c(0,0,0,0))
+  plot.window(xlim = c(0,xlim), ylim = c(0,ylim), xaxs = "i", yaxs = "i", asp = NA)
+  points(x-min(x)+1, y-min(y)+1, pch = 16, col = color_sequence,cex=0.3)
+  dev.off()
+}
+
+islet <- rownames(Matrix)[s==390]
+ions <- Matrix[s==390,]
+factor <- ifelse(seg$umap==2,'islet','non-islet')
+re <- apply(ions,1,function(x) median(x[seg$umap==2])>median(x))
+mz <- sapply(strsplit(islet[re],'\\_'),function(x) round(as.numeric(x[1]),4))
+im <- sapply(strsplit(islet[re],'\\_'),function(x) as.numeric(x[2]))
+isletdf <- cbind.data.frame(mz,im,islet=islet[re])
+write.csv(isletdf,'isletcheckall.csv')
+```
+
 ## Reactomics analysis
 
 This part will extract PMDs for reaction level check.
@@ -566,121 +668,6 @@ d <- ggplot(xy, aes(x,y)) +
 a|b|c|d
 ```
 
-
-## Differential analysis
-
-This part will check the changes at peaks level for ion intesnity, ion numbers, as well as ion distances.
-
-### for ions
-
-```{r}
-library(data.table)
-dt <- fread("ticmzccs.csv",header = T)
-dt_values <- dt[, -1, with = FALSE]
-
-# m/z and im
-mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
-im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
-
-# define pixel level groups, here using segmentation
-seg <- fread('segmentation.csv',header=T)
-library(genefilter)
-re <- colFtests(as.matrix(dt_values),factor(ifelse(seg$umap==2,'islet','non-islet')))
-
-# fold change
-fcall <- c()
-df <- as.matrix(dt_values)
-group <- factor(ifelse(seg$umap==2,'islet','non-islet'))
-for (i in 1:ncol(dt_values)){
-  t <- aggregate(df[,i],by=list(group),mean)
-  fc <- t[1,2]/t[2,2]
-  fcall <- c(fcall,fc)
-}
-fcall[is.na(fcall)] <- 0
-re$adj <- p.adjust(re$p.value,'BH')
-
-# filter with p value and fold change
-sum(re$adj<0.05&!is.na(re$adj)&(fcall>1.5|fcall<0.67))/length(re$adj)
-```
-
-### for ion numbers
-
-```{r}
-library(data.table)
-dt <- fread("ticmzccs.csv",header = T)
-dt[, np := rowSums(.SD != 0)]
-seg <- fread('segmentation.csv',header=T)
-seg$np <- dt$np
-seg$islet <- factor(ifelse(seg$umap==2,'islet','non-islet'))
-library(ggplot2)
-ggplot(seg,aes(np)) +
-  ggtitle('peak number for each pixel')+
-  geom_histogram(binwidth=1)+theme_bw()
-
-dt_values <- as.matrix(dt[, -1, with = FALSE])
-num <- apply(dt_values,2,function(x) sum(x!=0))
-num <- data.frame(num=num)
-ggplot(num,aes(num)) +
-  ggtitle('pixel number for each peaks')+
-  geom_histogram()+theme_bw()
-
-ggplot(seg, aes(x = np, y = islet)) + 
-  ggtitle('pixel number for different group')+
-  geom_density_ridges()+theme_bw()
-# t.test for pixel number
-for(i in c(1:length(unique(seg$pca)))){
-  xyi <- seg[seg$pca==i,]
-  if(length(unique(xyi$islet))>1){
-    print(t.test(xyi$np~xyi$islet))
-  }
-}
-```
-
-### for ion distance
-
-```{r}
-library(distances)
-# Check ion average distance for one group called islet
-dfislet <- dt_values[seg$umap==3,]
-dfnoislet <- dt_values[seg$umap!=3,]
-d2 <- d1 <- c()
-for(i in c(1:length(mz))){
-  xyi <- as.data.frame(seg)[dfislet[,i]!=0,]
-  # set pixel number 0.5-30% of all pixels to ensure sparsity
-  if(nrow(xyi)>0.005*nrow(dfislet)&nrow(xyi)<0.9*nrow(dfislet)){
-    dt <- distances(xyi[,c(1,2)])
-    #d1 <- c(d1,median(dt))
-    d2 <- c(d2,mean(dt))
-  }else{
-    d2 <- c(d2,NA)
-  }
-}
-# Check ion average distance for one group called dfold
-d4 <- d3 <- c()
-for(i in c(1:length(mz))){
-  xyi <- as.data.frame(seg)[dfnoislet[,i]!=0,]
-  # set pixel number 0.5-30% of all pixels to ensure sparsity
-  if(nrow(xyi)>0.005*nrow(dfnoislet)&nrow(xyi)<0.9*nrow(dfnoislet)){
-    dt <- distances(xyi[,c(1,2)])
-    #d1 <- c(d1,median(dt))
-    d4 <- c(d4,mean(dt))
-  }else{
-    d4 <- c(d4,NA)
-  }
-}
-# t test and visulization of differences
-xx <- cbind.data.frame(dis=c(d2,d4),group=c(rep('islet',length(d2)),rep('nosilet',length(d4))))
-library(ggplot2)
-library(ggridges)
-xx <- xx[complete.cases(xx),]
-ggplot(xx, aes(dis,group)) +
-  geom_density_ridges()+theme_bw()
-
-t.test(xx$dis~xx$group)
-```
-
-# Biological Interpretation
-
 ## Molecular Network
 
 ```{r}
@@ -793,9 +780,11 @@ rmwf::runmsinet()
 
 Then you could update network file (msinet.csv), annotation file (annoccs.csv) and images to generate network visualization for biological people.
 
-## ROI specific analysis
+# Differential analysis
 
-### Ion cluster for ions in certain segmentation
+This part will check the changes at peaks level for ion intesnity, ion numbers, as well as ion distances.
+
+## for ions
 
 ```{r}
 library(data.table)
@@ -806,97 +795,102 @@ dt_values <- dt[, -1, with = FALSE]
 mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
 im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
 
-# segmentation
+# define pixel level groups, here using segmentation
 seg <- fread('segmentation.csv',header=T)
+library(genefilter)
+re <- colFtests(as.matrix(dt_values),factor(ifelse(seg$umap==2,'islet','non-islet')))
 
-subdt <- dt_values[seg$umap==2,]
-x <- seg$x
-y <- seg$y
-
-Matrix <- t(subdt)
-
-# correlation distance
-n <- ncol(Matrix)
-Matrix_scaled <- scale(Matrix)
-sim <- (Matrix_scaled %*% t(Matrix_scaled)) / (n - 1)
-D_sim <- as.dist(1 - sim)
-# D_sim <- as.dist(1 - sim^2)
-
-# cosine distance
-# row_norms <- sqrt(rowSums(Matrix^2))
-# sim <- sweep(Matrix, 1, row_norms, "/")
-# sim <- sim %*% t(sim)
-# # change to distance
-# D_sim <- as.dist(1 - sim)
-
-t <- hclust(D_sim)
-# set cutoff
-s <- cutree(t,h = 0.8)
-# only find the clusters with more than 10 ions
-name <- as.numeric(names(table(s)[table(s)>10]))
-
-Matrix <- t(dt_values)
-split_matrices <- lapply(name, function(category) {
-  rows <- which(s == as.numeric(category))
-  subset_matrix <- Matrix[rows, , drop = FALSE]
-  return(subset_matrix)
-})
-# sum the intensity from the same clusters
-summed_matrices <- lapply(split_matrices, function(subset_matrix) {
-  xxx <- apply(subset_matrix, 1, scale)
-  x <- rowSums(xxx)/ncol(xxx)
-  return(x)
-})
-
-# generate figures for cluster TIC maps
-result_matrix <- do.call(cbind, summed_matrices)
-
-clpan <- cbind.data.frame(x=x,y=y,result_matrix)
-
-dir.create('cluster')
-for(i in c(1:length(name))){
-  dfx <- result_matrix[,i]
-  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
-  color_palette <- colorRamp(c("yellow", "red"))
-  color_sequence <- rgb(color_palette(norm)/255,alpha=1)
-  xlim=max(x)-min(x)+1
-  ylim=max(y)-min(y)+1
-
-  png(paste0('cluster/cluster',name[i],'.png'),width=xlim,height = ylim)
-  plot.new()
-  par(mar=c(0,0,0,0))
-  plot.window(xlim = c(0,xlim), ylim = c(0,ylim), xaxs = "i", yaxs = "i", asp = NA)
-  points(x-min(x)+1, y-min(y)+1, pch = 16, col = color_sequence,cex=0.3)
-  dev.off()
+# fold change
+fcall <- c()
+df <- as.matrix(dt_values)
+group <- factor(ifelse(seg$umap==2,'islet','non-islet'))
+for (i in 1:ncol(dt_values)){
+  t <- aggregate(df[,i],by=list(group),mean)
+  fc <- t[1,2]/t[2,2]
+  fcall <- c(fcall,fc)
 }
+fcall[is.na(fcall)] <- 0
+re$adj <- p.adjust(re$p.value,'BH')
 
-rows <- which(s==390)
-result_matrix <- Matrix[rows, , drop = FALSE]
-for(i in c(1:nrow(result_matrix))){
-  dfx <- result_matrix[i,]
-  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
-  color_palette <- colorRamp(c("yellow", "red"))
-  color_sequence <- rgb(color_palette(norm)/255,alpha=1)
-  xlim=max(x)-min(x)+1
-  ylim=max(y)-min(y)+1 
-  png(paste0('cluster/ion',colnames(dt_values)[rows[i]],'.png'),width=xlim,height = ylim)
-  plot.new()
-  par(mar=c(0,0,0,0))
-  plot.window(xlim = c(0,xlim), ylim = c(0,ylim), xaxs = "i", yaxs = "i", asp = NA)
-  points(x-min(x)+1, y-min(y)+1, pch = 16, col = color_sequence,cex=0.3)
-  dev.off()
-}
-
-islet <- rownames(Matrix)[s==390]
-ions <- Matrix[s==390,]
-factor <- ifelse(seg$umap==2,'islet','non-islet')
-re <- apply(ions,1,function(x) median(x[seg$umap==2])>median(x))
-mz <- sapply(strsplit(islet[re],'\\_'),function(x) round(as.numeric(x[1]),4))
-im <- sapply(strsplit(islet[re],'\\_'),function(x) as.numeric(x[2]))
-isletdf <- cbind.data.frame(mz,im,islet=islet[re])
-write.csv(isletdf,'isletcheckall.csv')
+# filter with p value and fold change
+sum(re$adj<0.05&!is.na(re$adj)&(fcall>1.5|fcall<0.67))/length(re$adj)
 ```
 
+## for ion numbers
+
+```{r}
+library(data.table)
+dt <- fread("ticmzccs.csv",header = T)
+dt[, np := rowSums(.SD != 0)]
+seg <- fread('segmentation.csv',header=T)
+seg$np <- dt$np
+seg$islet <- factor(ifelse(seg$umap==2,'islet','non-islet'))
+library(ggplot2)
+ggplot(seg,aes(np)) +
+  ggtitle('peak number for each pixel')+
+  geom_histogram(binwidth=1)+theme_bw()
+
+dt_values <- as.matrix(dt[, -1, with = FALSE])
+num <- apply(dt_values,2,function(x) sum(x!=0))
+num <- data.frame(num=num)
+ggplot(num,aes(num)) +
+  ggtitle('pixel number for each peaks')+
+  geom_histogram()+theme_bw()
+
+ggplot(seg, aes(x = np, y = islet)) + 
+  ggtitle('pixel number for different group')+
+  geom_density_ridges()+theme_bw()
+# t.test for pixel number
+for(i in c(1:length(unique(seg$pca)))){
+  xyi <- seg[seg$pca==i,]
+  if(length(unique(xyi$islet))>1){
+    print(t.test(xyi$np~xyi$islet))
+  }
+}
+```
+
+## for ion distance
+
+```{r}
+library(distances)
+# Check ion average distance for one group called islet
+dfislet <- dt_values[seg$umap==3,]
+dfnoislet <- dt_values[seg$umap!=3,]
+d2 <- d1 <- c()
+for(i in c(1:length(mz))){
+  xyi <- as.data.frame(seg)[dfislet[,i]!=0,]
+  # set pixel number 0.5-30% of all pixels to ensure sparsity
+  if(nrow(xyi)>0.005*nrow(dfislet)&nrow(xyi)<0.9*nrow(dfislet)){
+    dt <- distances(xyi[,c(1,2)])
+    #d1 <- c(d1,median(dt))
+    d2 <- c(d2,mean(dt))
+  }else{
+    d2 <- c(d2,NA)
+  }
+}
+# Check ion average distance for one group called dfold
+d4 <- d3 <- c()
+for(i in c(1:length(mz))){
+  xyi <- as.data.frame(seg)[dfnoislet[,i]!=0,]
+  # set pixel number 0.5-30% of all pixels to ensure sparsity
+  if(nrow(xyi)>0.005*nrow(dfnoislet)&nrow(xyi)<0.9*nrow(dfnoislet)){
+    dt <- distances(xyi[,c(1,2)])
+    #d1 <- c(d1,median(dt))
+    d4 <- c(d4,mean(dt))
+  }else{
+    d4 <- c(d4,NA)
+  }
+}
+# t test and visulization of differences
+xx <- cbind.data.frame(dis=c(d2,d4),group=c(rep('islet',length(d2)),rep('nosilet',length(d4))))
+library(ggplot2)
+library(ggridges)
+xx <- xx[complete.cases(xx),]
+ggplot(xx, aes(dis,group)) +
+  geom_density_ridges()+theme_bw()
+
+t.test(xx$dis~xx$group)
+```
 
 # Scale the spatial resolution
 
