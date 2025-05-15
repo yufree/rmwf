@@ -361,6 +361,8 @@ legend('topright',legend = unique(pr),col=unique(pr),pch=19,cex=1)
 This part will use UMAP to perform segmentation.
 
 ```{r}
+Sys.setenv(RETICULATE_CONDA = "/opt/minforge3/bin/conda")
+use_condaenv("base", required = TRUE)
 library(data.table)
 dt <- fread("ticmzccs.csv",header = T)
 dt_values <- dt[, -1, with = FALSE]
