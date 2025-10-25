@@ -12,11 +12,11 @@ runmsinet <- function() {
 #' Shiny application for Mass Spectrometry Imaging annotation with mz and ccs
 #' @export
 runmzccsanno <- function() {
-    file <- system.file("mzccsanno.Rmd",
+    file <- system.file("mzccsanno",
                         package = "rmwf")
     if (file == "") {
         stop("Could not find directory. Try re-installing `rmwf`.",
              call. = FALSE)
     }
-    rmarkdown::run(file)
+    shiny::runApp(file)
 }
