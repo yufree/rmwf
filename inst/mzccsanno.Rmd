@@ -53,7 +53,7 @@ output$results_table <- DT::renderDataTable({
   # Load ref peaks
   ref <- fread(input$reference$datapath)
   mz <- ref$mz
-  im <- ref$im
+  im <- ref$ccs
   
   # Align
   align <- enviGCMS::getalign(mz, lipid$mz, im, lipid$ccs, 
