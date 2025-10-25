@@ -45,9 +45,9 @@ output$results_table <- DT::renderDataTable({
   
   # Set ion mode
   if (input$ion_mode == "positive") {
-    lipid <- lipid[adducts %in% c('[M+H]','[M+Na]','[M+NH4]','[M+H-H2O]','[M+]','[M+K]')]
+    lipid <- lipid[lipid$adducts %in% c('[M+H]','[M+Na]','[M+NH4]','[M+H-H2O]','[M+]','[M+K]')]
   } else {
-    lipid <- lipid[adducts %in% c('[M-H]','[M+Cl]','[M-H+FA]','[M-]','[M+Na-2H]')]
+    lipid <- lipid[lipid$adducts %in% c('[M-H]','[M+Cl]','[M-H+FA]','[M-]','[M+Na-2H]')]
   }
   
   # Load ref peaks
