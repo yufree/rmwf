@@ -1,12 +1,12 @@
 Package: rmwf
-Title: Reproducilble Metabolomics WorkFlow
+Title: Reproducible Metabolomics Workflow
 Version: 0.1.2
 Authors@R: 
     person(given = "Miao",
            family = "Yu",
            role = c("aut", "cre"),
            email = "yufreecas@gmail.com")
-Description: Reproducilble Metabolomics WorkFlow (RMWF) is a R package for xcmsrocker. It will show the workflow templates and demo data for different R-based metabolomics software. 
+Description: Reproducible Metabolomics Workflow (RMWF) is an R package for xcmsrocker. It provides workflow templates and demo data for different R-based metabolomics software.
 License: GPL (>= 3)
 Encoding: UTF-8
 Depends: R (>= 3.5.0)
@@ -16,8 +16,6 @@ Suggests: IPO,
         rfigshare,
         stringr,
         UpSetR,
-        enviGCMS,
-        pmd,
         GO.db,
         MsBackendMgf,
         MetaboAnnotation,
@@ -33,7 +31,14 @@ Suggests: IPO,
         ClusterR,
         distances,
         ggridges
-Imports: jsonlite
+Imports: BiocParallel,
+        data.table,
+        enviGCMS,
+        jsonlite,
+        MSnbase,
+        pmd,
+        shiny,
+        xcms
 LazyData: true
 LazyDataCompression: xz
 RoxygenNote: 7.3.2

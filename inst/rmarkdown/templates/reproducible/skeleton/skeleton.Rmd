@@ -23,12 +23,6 @@ files <- list.files(path,recursive = T,full.names = T)
 # demo data from TBBPA https://pubs.acs.org/doi/abs/10.1021/acs.est.9b02122
 tbbpa <- enviGCMS::getmzrtcsv(files[grepl('tbbpa',files)])
 # demo data from in vivo SPME https://www.sciencedirect.com/science/article/pii/S0003267018313047
-spme <- enviGCMS::getmzrtcsv(files[grepl('demomzrt',files)])
-
-path <- system.file("extdata/untarget", package = "rmwf")
-files <- list.files(path,recursive = T,full.names = T)
-
-# demo data from MTBLS28 https://www.ebi.ac.uk/metabolights/MTBLS28
 MTBLS28pos <- enviGCMS::getmzrtcsv(files[grepl('MTBLS28pos',files)])
 MTBLS28neg <- enviGCMS::getmzrtcsv(files[grepl('MTBLS28neg',files)])
 
@@ -37,39 +31,6 @@ MTBLS341exudatepos <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341exudatepos',file
 MTBLS341exudateneg <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341exudateneg',files)])
 MTBLS341leafpos <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341leafpos',files)])
 MTBLS341leafneg <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341leafneg',files)])
-MTBLS341rootpos <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341rootneg',files)])
-MTBLS341rootneg <- enviGCMS::getmzrtcsv(files[grepl('MTBLS341rootneg',files)])
-
-# demo data from MTBLS59 https://www.ebi.ac.uk/metabolights/MTBLS59
-MTBLS59pos <- enviGCMS::getmzrtcsv(files[grepl('MTBLS59pos',files)])
-MTBLS59neg <- enviGCMS::getmzrtcsv(files[grepl('MTBLS59neg',files)])
-
-# demo data from ST000220 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000220
-DST000220 <- enviGCMS::getmzrtcsv(files[grepl('DST000220',files)])
-DST000220neg <- enviGCMS::getmzrtcsv(files[grepl('DST000220neg',files)])
-
-# demo data from ST000388 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000388
-DST000388 <- enviGCMS::getmzrtcsv(files[grepl('DST000388',files)])
-
-# demo data from ST000918 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000918
-DST000918pos <- enviGCMS::getmzrtcsv(files[grepl('DST000918pos',files)])
-DST000918neg <- enviGCMS::getmzrtcsv(files[grepl('DST000918neg',files)])
-
-# demo data from ST001120 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST001120
-DST001120pos <- enviGCMS::getmzrtcsv(files[grepl('DST001120pos',files)])
-DST001120neg <- enviGCMS::getmzrtcsv(files[grepl('DST001120mzrt',files)])
-
-# demo data from ST001168 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST001168
-DST001168pos <- enviGCMS::getmzrtcsv(files[grepl('DST001168pos',files)])
-DST001168neg <- enviGCMS::getmzrtcsv(files[grepl('DST001168neg',files)])
-
-# demo data from ST001169 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST001169
-DST001169pos <- enviGCMS::getmzrtcsv(files[grepl('DST001169pos',files)])
-DST001169neg <- enviGCMS::getmzrtcsv(files[grepl('DST001169neg',files)])
-
-# demo data from ST000560 https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000560
-ST000560pos <- enviGCMS::getmzrtcsv(files[grepl('ST000560mzrt',files)])
-ST000560neg <- enviGCMS::getmzrtcsv(files[grepl('ST000560neg',files)])
 
 path <- system.file("extdata/target", package = "rmwf")
 files <- list.files(path,recursive = T,full.names = T)
@@ -112,23 +73,98 @@ MTBLS351GCxGCmeta <- read.csv(files[grepl('MTBLS351GCxGCmeta',files)])
 
 # Connection with other online database
 
-## ISA for metabolights
+## MetaboLights
 
-```{r isa, eval=F}
-# Risa package, pls download metadata from metabolights and put those file in current work dir
-library(Risa)
-test <- readISAtab()
-metadata <- test@study.files$MTBLS822
-# change the file name to load in the metabolites data
-data0 <- read.table(file = 'm_e07_qm_fia_maf.tsv', sep = '\t', skip = 1)
-head <- read.table(file = 'm_e07_qm_fia_maf.tsv',sep = '\t',nrows = 1)
-data <- data0[,match(metadata$`Sample Name`,head,nomatch = F)]
-colnames(data) <- head[,match(metadata$`Sample Name`,head,nomatch = F)]
-group <- metadata[match(colnames(data),metadata$`Sample Name`,nomatch = F),]
-mz <- data0[,head=='mass_to_charge']
-rt <- data0[,head=='retention_time']
+```{r metabolights, eval=F}
+# Use the MetaboLights REST API instead of the retired Risa workflow.
+study_id <- 'MTBLS822'
+study_url <- paste0(
+  'https://www.ebi.ac.uk/metabolights/ws/studies/public/study/',
+  study_id
+)
+
+table_to_df <- function(api_table) {
+  field_order <- order(vapply(api_table$fields, `[[`, integer(1), 'index'))
+  headers <- vapply(api_table$fields[field_order], `[[`, character(1), 'cleanHeader')
+  out <- as.data.frame(do.call(rbind, api_table$data), stringsAsFactors = FALSE)
+  colnames(out) <- headers
+  out
+}
+
+study <- jsonlite::fromJSON(study_url, simplifyVector = FALSE)$content
+metadata <- table_to_df(study$sampleTable)
+assay_idx <- which(vapply(
+  study$assays,
+  function(x) grepl('fia_maf\\.tsv$', basename(x$metaboliteAssignment$metaboliteAssignmentFileName)),
+  logical(1)
+))[1]
+assay <- study$assays[[assay_idx]]
+assay_table <- table_to_df(assay$assayTable)
+
+maf_file <- basename(assay$metaboliteAssignment$metaboliteAssignmentFileName)
+maf_url <- paste0(
+  'https://www.ebi.ac.uk/metabolights/ws/studies/',
+  study_id,
+  '/download/public?file=',
+  utils::URLencode(maf_file, reserved = TRUE)
+)
+utils::download.file(maf_url, destfile = maf_file, mode = 'wb')
+maf <- utils::read.delim(maf_file, check.names = FALSE)
+
+sample_cols <- intersect(assay_table$`Sample Name`, colnames(maf))
+data <- maf[, sample_cols, drop = FALSE]
+group <- metadata[match(sample_cols, metadata$`Sample Name`), , drop = FALSE]
+mz <- if ('mass_to_charge' %in% colnames(maf)) maf[['mass_to_charge']] else rep(NA_real_, nrow(maf))
+rt <- if ('retention_time' %in% colnames(maf)) maf[['retention_time']] else rep(NA_real_, nrow(maf))
+
+# ── Optional: filter samples by metadata before constructing the list ─────────
+# The sample table contains Characteristics and Factor Value columns returned
+# by the API (e.g. 'Organism part', 'Timepoint', 'Sample type').
+# Inspect what is available for this study:
+print(colnames(group))   # e.g. "Sample Name", "Organism", "Organism part", "Timepoint" ...
+
+# Keep only blood plasma samples at TimePoint 1 (adjust column/value as needed).
+keep <- group$`Organism part` == 'blood plasma' & group$Timepoint == 'TimePoint 1'
+data  <- data[, keep, drop = FALSE]
+group <- group[keep, , drop = FALSE]
+
 # construct the list
-list <- list(data=data,group=group,mz=mz,rt=rt)
+list <- list(
+  data = data,
+  group = group,
+  mz = mz,
+  rt = rt,
+  feature_info = maf[, setdiff(colnames(maf), sample_cols), drop = FALSE]
+)
+
+# ── Optional: download raw instrument files ───────────────────────────────────
+# The assay table carries two file columns per row:
+#   'Raw Spectral Data File'     – original instrument file (e.g. .wiff, .raw, .mzML)
+#   'Derived Spectral Data File' – vendor-converted or centroided file
+# Both use the same /download/public?file=<path> endpoint.
+# WARNING: raw files can be several GB per study; filter to a subset if needed.
+
+ml_download_files <- function(study_id, file_paths, dest_dir = study_id) {
+  ml_base <- 'https://www.ebi.ac.uk/metabolights/ws/studies'
+  dir.create(dest_dir, showWarnings = FALSE, recursive = TRUE)
+  # remove empty / NA entries and deduplicate
+  file_paths <- unique(file_paths[nzchar(file_paths) & !is.na(file_paths)])
+  local_paths <- file.path(dest_dir, basename(file_paths))
+  for (i in seq_along(file_paths)) {
+    url <- paste0(ml_base, '/', study_id, '/download/public?file=',
+                  utils::URLencode(file_paths[i], reserved = TRUE))
+    utils::download.file(url, destfile = local_paths[i], mode = 'wb')
+  }
+  local_paths
+}
+
+# Download all raw files for the selected assay (can be large).
+raw_files <- unique(assay_table[['Raw Spectral Data File']])
+raw_local <- ml_download_files(study_id, raw_files, dest_dir = file.path(study_id, 'raw'))
+
+# Download derived/converted files instead (often smaller mzML/mzXML).
+derived_files <- unique(assay_table[['Derived Spectral Data File']])
+derived_local <- ml_download_files(study_id, derived_files, dest_dir = file.path(study_id, 'derived'))
 ```
 
 ## Rmassbank
@@ -182,21 +218,65 @@ mb <- mbWorkflow(mb, steps=1:8)
 ## Metabolomics WorkBench
 
 ```{r mwb, eval=F}
-# target list from certain study
-list <- rmwf::getmwlist('ST000001')
+mw_base <- 'https://www.metabolomicsworkbench.org/rest'
 
-# Untargeted data
-# download demo files here: https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=ProcessDownloadResults&StudyID=ST000553&AnalysisID=AN000845
+# ── Step 1: discover studies by project metadata ─────────────────────────────
+# Use the metstat endpoint to find studies matching species / sample source /
+# disease criteria.  Any slot can be left blank; keep the semicolons.
+# Format: <analysis_type>;<polarity>;<chromatography>;<species>;<sample_source>;<disease>
+metstat_url <- paste0(mw_base, '/metstat/LCMS;;HILIC;Human;Blood;Diabetes')
+hits <- jsonlite::fromJSON(metstat_url)
+# hits contains study_id, analysis_id, and summary fields for each match.
 
-group <- rmwf::getmwfactor('ST000553')
+# Alternatively, pull ALL study summaries and filter locally:
+all_studies <- jsonlite::fromJSON(paste0(mw_base, '/study/study_id/ST/summary'))
+# e.g. filter by species:
+human_studies <- all_studies[grepl('Homo sapiens', all_studies$species, ignore.case = TRUE), ]
 
-data <- read.table('ST000553_AN000846.txt',sep = '\t',header = T, nrows = 1983,na.strings = '\\N',row.names = 1)
+# ── Step 2: batch-download targeted data by study ID ─────────────────────────
+# rmwf::getmwlist() wraps /study/study_id/<ID>/metabolites
+# rmwf::getmwfactor() wraps /study/study_id/<ID>/factors
+target_ids <- c('ST000001', 'ST000553')
+target_lists <- setNames(lapply(target_ids, rmwf::getmwlist), target_ids)
+target_factors <- setNames(lapply(target_ids, rmwf::getmwfactor), target_ids)
 
-anno <- read.table('ST000553_AN000846.txt',sep = '\t',header = T, skip = 1985,na.strings = '\\N',row.names = 1)
-mz <- anno$quantified.m.z
-rt <- anno$retention.index*60
+# ── Step 3: batch-download untargeted data by analysis ID ────────────────────
+# /study/analysis_id/<AN>/untarg_data/  – intensity matrix
+# /study/analysis_id/<AN>/untarg_factors/ – group info
+get_mw_untargeted_api <- function(analysis_id) {
+  data_url  <- paste0(mw_base, '/study/analysis_id/', analysis_id, '/untarg_data/')
+  group_url <- paste0(mw_base, '/study/analysis_id/', analysis_id, '/untarg_factors/')
+  raw   <- jsonlite::fromJSON(data_url)
+  group <- jsonlite::fromJSON(group_url)
+  list(
+    data  = raw$data,
+    mz    = as.numeric(raw$mz),
+    rt    = as.numeric(raw$rt),
+    group = group
+  )
+}
 
-list <- list(data=data,mz=mz,rt=rt,group=group)
+analysis_ids <- c('AN000113', 'AN000846')
+untargeted_results <- setNames(lapply(analysis_ids, get_mw_untargeted_api), analysis_ids)
+
+# ── Step 4: filter samples by factor/metadata within a study ─────────────────
+# untarg_factors returns one row per sample with all factor columns.
+# Inspect available factor columns first:
+res <- untargeted_results[['AN000113']]
+print(colnames(res$group))   # e.g. "local_sample_id", "factors", ...
+
+# Filter to a specific factor value – adjust column name and value to match
+# the factor columns returned for your study.
+keep <- res$group$factors == 'Disease'   # example: keep only disease samples
+data_filtered  <- res$data[, keep, drop = FALSE]
+group_filtered <- res$group[keep, , drop = FALSE]
+
+list <- list(
+  data  = data_filtered,
+  mz    = res$mz,
+  rt    = res$rt,
+  group = group_filtered
+)
 ```
 
 ## rfigshare

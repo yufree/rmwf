@@ -5,7 +5,7 @@
   
 # RMWF
 
-Reproducilble Metabolomics WorkFlow(RMWF) is a R package for [xcmsrocker](https://hub.docker.com/r/yufree/xcmsrocker/). It will show the workflow templates and demo data for different R-based metabolomics software. User could use this package to make meta-analysis for different workflows.
+Reproducible Metabolomics Workflow (RMWF) is an R package for [xcmsrocker](https://hub.docker.com/r/yufree/xcmsrocker/). It provides workflow templates and demo data for different R-based metabolomics software. Users can use this package for meta-analysis across different workflows.
 
 If you directly use the docker image, the rmwf package is already installed.
 
@@ -37,11 +37,11 @@ Other template could be used to check data analysis script.
 
 - statistical: statistical analysis methods
 
-- reporducible: get data from online database
+- reproducible: get data from online database
 
 - reactomics: reactomics network analysis
 
-- MSI: mass sepctrometry imaging data analysis
+- MSI: mass spectrometry imaging data analysis
 
 ## Citation
 

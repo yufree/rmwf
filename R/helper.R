@@ -3,7 +3,7 @@
 #' @return list with details of checked study
 #' @export
 getmw <- function(ID){
-    url <- paste0('http://www.metabolomicsworkbench.org/rest/study/study_id/',ID,'/mwtab')
+    url <- paste0('https://www.metabolomicsworkbench.org/rest/study/study_id/',ID,'/mwtab')
     list <- jsonlite::fromJSON(url)
     return(list)
 }
@@ -28,7 +28,7 @@ getmwlist <- function(ID){
 #' @return dataframe
 #' @export
 getmwfactor <- function(ID){
-    url <- paste0('http://www.metabolomicsworkbench.org/rest/study/study_id/',ID,'/factors')
+    url <- paste0('https://www.metabolomicsworkbench.org/rest/study/study_id/',ID,'/factors')
     list <- jsonlite::fromJSON(url)
     df <- data.frame(matrix(unlist(list), nrow=length(list), byrow=T))
     return(df)
@@ -264,7 +264,7 @@ getmzrt <-
                     value = value
                 )
         }
-        getcsv(
+        enviGCMS::getcsv(
             list = result,
             name = name,
             mzdigit = mzdigit,
@@ -321,7 +321,7 @@ getdata <-
                     xset,
                     bw = 5,
                     mzwid = 0.015,
-                    minfrac = min
+                    minfrac = minfrac
                 )
                 xset2 <- xcms::retcor(xset, "obiwarp")
                 # you need group the peaks again for this corrected
@@ -566,30 +566,54 @@ getdata2 <- function(path,
     } else {
         sample_group <- fromPaths[, 1]
     }
-    sample_group <- data.frame(sample_group)
+    sample_group <- data.frame(sample_group, stringsAsFactors = FALSE)
+    colnames(sample_group) <- "sample_group"
 
     if (is.null(snames)) {
         snames <- rownames(fromPaths)
-    } else {
-        rownames(sample_group) <- snames
     }
+    rownames(sample_group) <- snames
 
     pdata <- phenoData
     if (is.null(pdata)) {
-        pdata <- sclass
-        if (is.null(pdata))
-            pdata <- methods::new("NAnnotatedDataFrame",
-                                  sample_group)
+        if (is.null(sclass)) {
+            pdata <- methods::new("NAnnotatedDataFrame", sample_group)
+        } else {
+            if (length(sclass) != nrow(sample_group)) {
+                stop("length of sclass should match sample numbers")
+            }
+            pdata <- methods::new(
+                "NAnnotatedDataFrame",
+                data.frame(
+                    sample_group = as.character(sclass),
+                    row.names = rownames(sample_group),
+                    stringsAsFactors = FALSE
+                )
+            )
+        }
     } else {
-        if (inherits(pdata,"data.frame"))
-            pdata <- methods::new("NAnnotatedDataFrame",
-                                  sample_group)
-        if (!inherits(pdata, "NAnnotatedDataFrame"))
+        if (inherits(pdata, "data.frame")) {
+            if (nrow(pdata) != nrow(sample_group)) {
+                stop("phenoData rows should match sample numbers")
+            }
+            if (is.null(rownames(pdata))) {
+                rownames(pdata) <- rownames(sample_group)
+            }
+            if (!"sample_group" %in% colnames(pdata)) {
+                pdata$sample_group <- sample_group$sample_group
+            }
+            pdata <- methods::new("NAnnotatedDataFrame", pdata)
+        }
+        if (!inherits(pdata, "NAnnotatedDataFrame")) {
             stop("phenoData has to be a data.frame or NAnnotatedDataFrame!")
+        }
+        if (is.null(pdata$sample_group)) {
+            stop("phenoData should contain a sample_group column")
+        }
     }
     raw_data <- MSnbase::readMSData(files, pdata = pdata,
                                     mode = mode)
-    gpp@sampleGroups <- pdata$sample_group
+    gpp@sampleGroups <- as.character(pdata$sample_group)
     xod <- xcms::findChromPeaks(raw_data, param = ppp,
                                 BPPARAM = BPPARAM)
     xod <- xcms::adjustRtime(xod, param = rtp)
@@ -1724,13 +1748,10 @@ xrankanno <- function(file,
                     }
                     score <- rep(NA, length(mzr))
                     for (i in seq_along(mzr)) {
-                        match <- which.min(abs(mzrdb - mzr[i]) / mzr[i] * 1e06 < ppm)
+                        ppm_diff <- abs(mzrdb - mzr[i]) / mzr[i] * 1e06
+                        match <- which(ppm_diff < ppm)
                         if (length(match) > 0) {
-                            match <-  match[which.min(
-                                abs(
-                                    mzrdb - mzr[i]
-                                ) / mzr[i] * 1e06 < ppm
-                            )]
+                            match <- match[which.min(ppm_diff[match])]
                             score[i] <-
                                 xrankm[match, i]
                         } else{
@@ -1741,15 +1762,10 @@ xrankanno <- function(file,
                     score2 <-
                         rep(NA, length(mzrdb))
                     for (i in seq_along(mzrdb)) {
-                        match <- which.min(
-                            abs(mzr - mzrdb[i]) / mzrdb[i] * 1e06 < ppm
-                        )
+                        ppm_diff <- abs(mzr - mzrdb[i]) / mzrdb[i] * 1e06
+                        match <- which(ppm_diff < ppm)
                         if (length(match) > 0) {
-                            match <-  match[which.min(
-                                abs(
-                                    mzr - mzrdb[i]
-                                ) / mzrdb[i] * 1e06 < ppm
-                            )]
+                            match <- match[which.min(ppm_diff[match])]
                             score2[i] <-
                                 xrankm[match, i]
                         } else{
