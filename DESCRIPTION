@@ -1,6 +1,6 @@
 Package: rmwf
-Title: Reproducible Metabolomics Workflow
-Version: 0.1.2
+Title: Reproducilble Metabolomics WorkFlow
+Version: 0.1.3
 Authors@R: 
     person(given = "Miao",
            family = "Yu",
@@ -20,7 +20,6 @@ Suggests: IPO,
         MsBackendMgf,
         MetaboAnnotation,
         CompoundDb,
-        Autotuner,
         XMLSchema,
         SSOAP,
         xMSannotator,

@@ -77,7 +77,6 @@ do
 done
 ```
 
-
 # Optimization of XCMS
 
 This chunk should run first to generate XCMS parameters for peak picking, retention time correction, and featuer generation. We suggest a computer with large memory to run this chunk for IPO package.
@@ -139,7 +138,7 @@ getrtmz <- function(path,index = NULL){
   sample_name=sub(basename(files),pattern = ".CDF|.mzXML|.mzML",replacement = '')
   pd <- cbind.data.frame(sample_name, sample_group)
   
-  raw_data <- readMsExperiment(spectraFiles = files, sampleData = pd)
+  raw_data <- MsExperiment::readMsExperiment(spectraFiles = files, sampleData = pd)
   cwp <- CentWaveParam(peakwidth = c(para$min_peakwidth,para$max_peakwidth), 
                        ppm             = para$ppm,
                        noise           = para$noise,
@@ -166,11 +165,11 @@ getrtmz <- function(path,index = NULL){
                         minSamples = para$minsamp,
                         maxFeatures = para$max,
                         binSize = para$mzwid)
-  MSnbase::setMSnbaseFastLoad(FALSE)
+  MSnbase::setMSnbaseFastLoad(opt = F)
   xdata <- findChromPeaks(raw_data, param = cwp)
   xdata <- adjustRtime(xdata, param = owp)
   xdata <- groupChromPeaks(xdata, param = pdp)
-  xdata <- fillChromPeaks(xdata)
+  xdata <- fillChromPeaks(xdata, param = ChromPeakAreaParam())
   return(xdata)
 }
 ```
@@ -210,7 +209,6 @@ cwp <- CentWaveParam(roiList = roilist,
 xdata <- findChromPeaks(raw_data, param = cwp,BPPARAM=SerialParam())
 peaklist <- chromPeaks(xdata)
 ```
-
 
 # Peaks list
 
@@ -366,4 +364,3 @@ pt <- gettarget(pre$mz,pre$rt,n=6,Drt = 0.2,ce=20,name = 'pmd')
 ```{r}
 sessionInfo()
 ```
-
