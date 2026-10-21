@@ -13,14 +13,12 @@ library(ggraph)
 library(tidygraph)
 library(flexdashboard)
 library(DT)
-library(enviGCMS)
 library(shinyWidgets)
 library(shinydashboard)
 library(visNetwork)
 
 sourceCpp("one_over_k0_to_ccs.cpp")
 sourceCpp('peakalign.cpp')
-sourceCpp("one_over_k0_to_ccs.cpp")
 sourceCpp("peak_finder.cpp")
 #'@title Find 2D Peaks
 #'@description This function finds 2D peaks in mass spectrometry data.
@@ -82,76 +80,123 @@ getsummary <- function(peak_file) {
   cat("  Location Y range: ", y_range[1], " - ", y_range[2], "\n")
 }
 
+#'@title Safe Query for OpenTIMS with Binary-Split Error Recovery
+#'@description Queries frames from an OpenTIMS handle with automatic recursive binary-split isolation and skipping of corrupt/unreadable frames.
+#'@param handle OpenTIMS data handle.
+#'@param frames Integer vector of frame IDs.
+#'@param columns Character vector of column names.
+#'@param max_depth Maximum recursion depth. Default is 8.
+#'@return Named list of column vectors, or NULL if all frames are unreadable.
+safe_query <- function(handle, frames, columns, max_depth = 8) {
+  res <- tryCatch(
+    query(handle, frames = frames, columns = columns),
+    error = function(e) e
+  )
+  if (!inherits(res, "error")) return(res)
+  if (length(frames) <= 1 || max_depth <= 0) {
+    warning(sprintf("Skipped unreadable/corrupted frame(s): %s", paste(frames, collapse = ",")))
+    return(NULL)
+  }
+  mid <- floor(length(frames) / 2)
+  f1 <- frames[1:mid]
+  f2 <- frames[(mid + 1):length(frames)]
+  d1 <- safe_query(handle, f1, columns, max_depth - 1)
+  d2 <- safe_query(handle, f2, columns, max_depth - 1)
+  if (is.null(d1) && is.null(d2)) return(NULL)
+  if (is.null(d1)) return(d2)
+  if (is.null(d2)) return(d1)
+  lapply(names(d1), function(nm) c(d1[[nm]], d2[[nm]]))
+}
+
 #'@title Get Reference Peaks
 #'@description This function processes raw mass spectrometry data to generate a reference peak list.
 #'@param path The path to the raw data (e.g., .d folder).
 #'@param accept_Bruker_EULA_and_on_Windows_or_Linux Set to TRUE to accept the Bruker EULA.
 #'@param libpath The path to the Bruker library files.
-#'@param batch_size The number of frames to process in each batch.
+#'@param batch_size The number of frames to process in each batch. Default is 25000 (optimized for 50GB RAM environments).
 #'@param outref The output file for the reference peaks.
 #'@param outcoord The output file for the coordinates.
 #'@param xrange The x-range of the region of interest.
 #'@param yrange The y-range of the region of interest.
 #'@return A reference peak list.
-getrefpeak <- function(path,accept_Bruker_EULA_and_on_Windows_or_Linux,libpath, batch_size, outref, outcoord, xrange,yrange){
-  # download dll/so file and set the column to be collected
+getrefpeak <- function(path,accept_Bruker_EULA_and_on_Windows_or_Linux,libpath = './', batch_size = 25000, outref, outcoord, xrange,yrange){
+  # columns to collect
+  all_columns <- c('frame', 'intensity', 'mz', 'inv_ion_mobility')
+  # download dll/so file if the EULA is accepted; otherwise fall back to an
+  # already downloaded library in libpath
   if (accept_Bruker_EULA_and_on_Windows_or_Linux) {
     folder_to_stode_priopriatary_code = libpath
-    path_to_bruker_dll = download_bruker_proprietary_code(folder_to_stode_priopriatary_code)
+    if (!dir.exists(folder_to_stode_priopriatary_code)) {
+      dir.create(folder_to_stode_priopriatary_code, recursive = TRUE, showWarnings = FALSE)
+    }
+    so_file <- if (.Platform$OS.type == 'windows') 'timsdata.dll' else 'libtimsdata.so'
+    target_so <- file.path(folder_to_stode_priopriatary_code, so_file)
+    if (!file.exists(target_so)) {
+      try({
+        py_lib <- system(sprintf("python3 -c 'import opentims_bruker_bridge, pathlib; print(pathlib.Path(opentims_bruker_bridge.__file__).parent / \"%s\")'", so_file), intern = TRUE)
+        if (file.exists(py_lib)) file.copy(py_lib, target_so)
+      }, silent = TRUE)
+    }
+    if (!file.exists(target_so)) {
+      path_to_bruker_dll = download_bruker_proprietary_code(folder_to_stode_priopriatary_code)
+    } else {
+      path_to_bruker_dll = target_so
+    }
     setup_bruker_so(path_to_bruker_dll)
-    all_columns = c('frame', 'intensity', 'mz', 'inv_ion_mobility')
+    lib_file <- path_to_bruker_dll
+  }else{
+    # libtimsdata.dll on windows, libtimsdata.so on other platforms
+    so_file <- if (.Platform$OS.type == 'windows') 'libtimsdata.dll' else 'libtimsdata.so'
+    lib_file <- file.path(libpath, so_file)
   }
   # Build the connection with raw data
   D = OpenTIMS(path)
   # extract frame information or define a range to subset the data
   xy <- table2df(D, "MaldiFrameInfo")
-  # subset coords idx for region of interests
-  idx <- which(xy$MaldiFrameInfo$XIndexPos>xrange[1]&xy$MaldiFrameInfo$XIndexPos<xrange[2]&xy$MaldiFrameInfo$YIndexPos>yrange[1]&xy$MaldiFrameInfo$YIndexPos<yrange[2])
+  # subset coords idx for region of interest (ROI): frames INSIDE the range
+  roi_idx <- which(xy$MaldiFrameInfo$XIndexPos>xrange[1]&xy$MaldiFrameInfo$XIndexPos<xrange[2]&xy$MaldiFrameInfo$YIndexPos>yrange[1]&xy$MaldiFrameInfo$YIndexPos<yrange[2])
   # set a batch size to avoid memory issues by process the data in batches
-  total_frames <- dim(xy$MaldiFrameInfo[idx,])[1]
-  frame <- xy$MaldiFrameInfo$Frame[idx]
-  
+  total_frames <- length(roi_idx)
+  frame <- xy$MaldiFrameInfo$Frame[roi_idx]
+
   # Process data in batches
-  
   total_batches <- ceiling(total_frames / batch_size)
-  
+
   dtx_list <- list()
   for (i in 1:total_batches) {
-    start_idx <- (i - 1) * batch_size + 1
-    end_idx <- min(i * batch_size, total_frames)
-    idx <- start_idx:end_idx
-    
-    data <- query(D, frames = frame[idx], columns = all_columns)
+    batch_idx <- ((i - 1) * batch_size + 1):min(i * batch_size, total_frames)
+
+    data <- safe_query(D, frames = frame[batch_idx], columns = all_columns)
+    if (is.null(data) || length(data$frame) == 0) next
     data <- as.data.table(data)
     # round up to make sure binning is working and fit the mass/ion mobility accuracy
     data[, mz := round(mz, 4)]
     data[, inv_ion_mobility := round(inv_ion_mobility, 3)]
-    
+
     dt <- data[, .(intensity = sum(intensity)), by = .(mz, inv_ion_mobility)]
-    dtx_list[[i]] <- dt  
-    rm(data)
-    gc()
+    dtx_list[[length(dtx_list) + 1]] <- dt
+    rm(data, dt)
+    gc(verbose = FALSE)
   }
   # reshape the data by mz and ion mobility
   dtx <- rbindlist(dtx_list)
   dtx <- dtx[, .(intensity = sum(intensity)), by = .(mz, inv_ion_mobility)]
-  
+
   # add ccs value for super pixel peaks
-  # change to libtimsdata.dll for windows
-  lib_path <- paste0(libpath,"libtimsdata.so")
-  result <- one_over_k0_to_ccs_parallel(dtx$inv_ion_mobility, rep(1,length(dtx$inv_ion_mobility)), dtx$mz, lib_path)
+  result <- one_over_k0_to_ccs_parallel(dtx$inv_ion_mobility, rep(1,length(dtx$inv_ion_mobility)), dtx$mz, lib_file)
   dtx[,ccs:=result]
   # save super pixel peaks
   fwrite(dtx,outref)
-  # save the location of pixels
-  coord <- xy$MaldiFrameInfo[-idx,c('Frame','XIndexPos','YIndexPos')]
+  # save the location of the pixels inside the ROI; getqlist() uses this file
+  # to map frame numbers back to pixel locations
+  coord <- xy$MaldiFrameInfo[roi_idx,c('Frame','XIndexPos','YIndexPos')]
   fwrite(coord,outcoord)
 }
 
 #'@title Get Quantitative Peak List
 #'@description This function generates a quantitative peak list.
 #'@param refpath The path to the reference peaks file.
-#'@param lib_path The path to the Bruker library files.
+#'@param lib_path The path to the Bruker library file (full path to libtimsdata.so/libtimsdata.dll).
 #'@param path The path to the raw data.
 #'@param method The normalization method ('tic' or 'rms').
 #'@param zero_proportion_cutoff The cutoff for removing peaks with a high proportion of zeros.
@@ -159,8 +204,11 @@ getrefpeak <- function(path,accept_Bruker_EULA_and_on_Windows_or_Linux,libpath, 
 #'@param normpath The output file for the normalized peak list.
 #'@param xrange The x-range of the region of interest.
 #'@param yrange The y-range of the region of interest.
+#'@param mz_ppm The m/z tolerance in ppm used to match peaks to the reference list. Default is 20.
+#'@param ccs_tolerance The relative CCS tolerance used to match peaks to the reference list. Default is 0.03.
+#'@param batch_size The number of frames to process in each batch. Default is 25000 (optimized for 50GB RAM environments).
 #'@return A quantitative peak list.
-getqlist <- function(refpath,lib_path,path, method, zero_proportion_cutoff, coordpath, normpath, xrange, yrange){
+getqlist <- function(refpath,lib_path,path, method, zero_proportion_cutoff, coordpath, normpath, xrange, yrange, mz_ppm = 20, ccs_tolerance = 0.03, batch_size = 25000){
   ref <- fread(refpath)
   setup_bruker_so(lib_path)
   all_columns = c('frame', 'intensity', 'mz', 'inv_ion_mobility')
@@ -170,37 +218,49 @@ getqlist <- function(refpath,lib_path,path, method, zero_proportion_cutoff, coor
   # set a batch size to avoid memory issues by process the data in batches
   total_frames <- dim(xy$MaldiFrameInfo[idx,])[1]
   frame <- xy$MaldiFrameInfo$Frame[idx]
-  # this setting will make sure the data.frame's row number is within the limits
-  batch <- floor(2e+09/nrow(ref))
+  # this setting will make sure the data.frame's row number is within the limits.
+  # the upper cap avoids loading too many frames in a single query when ref is small
+  batch <- max(1, min(batch_size, floor(2e+09/nrow(ref))))
   batchs <- ceiling(total_frames/batch)
   result <- list()
   for(i in 1:batchs){
     upper <- min(total_frames,i*batch)
     idx<- c(((i-1)*batch+1):upper)
-    data <- query(D, frames = frame[idx], columns = all_columns)
+    data <- safe_query(D, frames = frame[idx], columns = all_columns)
+    if (is.null(data) || length(data$frame) == 0) next
     data <- as.data.table(data)
     data[,ccs:=one_over_k0_to_ccs_parallel(data$inv_ion_mobility, rep(1,length(data$inv_ion_mobility)), data$mz, lib_path)]
-    resultt <- findpeakalign(data$mz,data$ccs,data$intensity,data$frame,ref$mz,ref$ccs, ppm = 20, ccs_shift = 0.03)
+    resultt <- findpeakalign(data$mz,data$ccs,data$intensity,data$frame,ref$mz,ref$ccs, ppm = mz_ppm, ccs_shift = ccs_tolerance)
     resultt <- as.data.table(resultt)
+    if (nrow(resultt) == 0) {
+      rm(data, resultt)
+      next
+    }
     if(method == 'tic'){
-      # perform TIC normalization
+      # perform TIC normalization: divide by the total matched intensity of the
+      # pixel (note: this only covers intensities matched to the reference list)
       resultt[, TIC := sum(intensity, na.rm = TRUE), by = frame]
-      resultt[, normalized_intensity := as.numeric(intensity / TIC * .N), by = frame]
+      resultt[, normalized_intensity := as.numeric(intensity / TIC), by = frame]
       resultt[, TIC := NULL]
     }else{
-      # perform RMS normalization
-      resultt[, rms := sqrt(mean(sum(intensity^2, na.rm = TRUE))), by = frame]
+      # perform RMS normalization: root mean square of the matched intensities
+      resultt[, rms := sqrt(mean(intensity^2, na.rm = TRUE)), by = frame]
       resultt[, normalized_intensity := as.numeric(intensity / rms), by = frame]
       resultt[, rms := NULL]
     }
-    result[[i]] <- dcast(
+    result[[length(result) + 1]] <- dcast(
       resultt, 
       frame ~ mz_ccs, 
       value.var = "normalized_intensity", 
       fun.aggregate = sum,
       fill = 0)
+    rm(data, resultt)
+    gc(verbose = FALSE)
   }
   result <- rbindlist(result,fill=T)
+  if (ncol(result) < 2) {
+    stop("No peak in the reference list was matched to the raw data; check the mz_ppm/ccs_tolerance settings.")
+  }
   for (col in names(result)) {
     set(result, i = which(is.na(result[[col]])), j = col, value = 0)
   }
@@ -225,10 +285,10 @@ getqlist <- function(refpath,lib_path,path, method, zero_proportion_cutoff, coor
 #'@param mode The ionization mode ('pos' or 'neg').
 #'@param peakpath The path to the peak list file.
 #'@param annofile The output file for the annotations.
-#'@param ppm The m/z tolerance in ppm. Default is 10.
-#'@param deltaccs The CCS tolerance. Default is 5.
+#'@param ppm The m/z tolerance in ppm. Default is 20 (suitable for TOF instruments such as the timsTOF fleX).
+#'@param deltaccs The absolute CCS tolerance in squared angstrom (Å²). Default is 5.
 #'@return An annotated peak list.
-getanno <- function(database,mode,peakpath,annofile, ppm = 10, deltaccs = 5){
+getanno <- function(database,mode,peakpath,annofile, ppm = 20, deltaccs = 5){
   lipid <- fread(database)
   # set mode
   if(mode == 'pos'){
@@ -243,6 +303,17 @@ getanno <- function(database,mode,peakpath,annofile, ppm = 10, deltaccs = 5){
   im <- sapply(strsplit(colnames(ref)[-1],'\\_'),function(x) as.numeric(x[2]))
   # align
   align <- enviGCMS::getalign(mz,lipid$mz,im,lipid$ccs,ppm=ppm,deltart = deltaccs)
+  # getalign() returns NULL when no peak is within tolerance; cbind.data.frame()
+  # then silently drops the NULL db_mz/db_im columns, and the merge() below
+  # fails on the missing keys. Short-circuit to a well-formed empty file.
+  if (is.null(align) || is.null(align$xid) || length(align$xid) == 0) {
+    message("No peak matched the database ", database, "; writing an empty annotation file.")
+    anno <- data.frame(mz = numeric(), im = numeric(),
+                       db_mz = numeric(), db_im = numeric())
+    lipidanno <- merge(anno, lipid, by.x = c('db_mz','db_im'), by.y = c('mz','ccs'))
+    fwrite(lipidanno, annofile)
+    return(invisible(lipidanno))
+  }
   anno <- cbind.data.frame(mz=mz[align$xid],im=im[align$xid],db_mz=align$mz2,db_im=align$rt2)
   lipidanno <- merge(anno,lipid,by.x = c('db_mz','db_im'),by.y = c('mz','ccs'))
   lipidanno <- lipidanno[!duplicated(lipidanno),]
@@ -259,7 +330,9 @@ plot_peak_stats <- function(peak_file) {
   library(ggplot2)
   
   dt <- fread(peak_file, header = TRUE)
-  dt[, np := rowSums(.SD != 0)]
+  # count non-zero peaks per pixel; exclude the character 'location' column
+  # (first column), otherwise 'location != 0' is always TRUE and inflates np by 1
+  dt[, np := rowSums(.SD != 0), .SDcols = -1]
   
   x <- sapply(strsplit(dt$location, '_'), function(x) as.numeric(x[1]))
   y <- sapply(strsplit(dt$location, '_'), function(x) as.numeric(x[2]))
@@ -288,15 +361,17 @@ plot_peak_stats <- function(peak_file) {
 perform_pca_segmentation <- function(peak_file, output_file, n_components = 20, n_clusters = 5) {
   
   dt <- fread(peak_file, header = TRUE)
-  dt_values <- dt[, -1, with = FALSE]
+  dt_values <- as.matrix(dt[, -1, with = FALSE])   # rows = pixels, cols = ions
   
   x <- sapply(strsplit(dt$location, '_'), function(x) as.numeric(x[1]))
   y <- sapply(strsplit(dt$location, '_'), function(x) as.numeric(x[2]))
   
-  mat <- t(dt_values)
-  mat_centered <- scale(t(mat), center = TRUE, scale = FALSE)
-  svd_result <- irlba(t(mat_centered), nv = n_components)
-  pca_scores <- t(mat_centered) %*% svd_result$v
+  # center each ion (column) across pixels, then project the PIXELS (rows)
+  # onto the principal components; previous versions transposed the matrix
+  # several times and ended up clustering ions instead of pixels
+  mat_centered <- scale(dt_values, center = TRUE, scale = FALSE)
+  svd_result <- irlba(mat_centered, nv = n_components)
+  pca_scores <- mat_centered %*% svd_result$v      # rows = pixels, cols = PCs
   
   km <- KMeans_arma(as.matrix(pca_scores), clusters = n_clusters, n_iter = 10, seed_mode = "random_subset", verbose = TRUE, CENTROIDS = NULL)
   pr <- predict_KMeans(as.matrix(pca_scores), km)
@@ -365,14 +440,17 @@ perform_cluster_ions <- function(peak_file, output_file, locindex=NULL, hclust_c
     subdt <- dt_values
   }
   
-  Matrix <- t(subdt)
+  Matrix <- t(subdt)  # rows = ions, cols = pixels
   row_norms <- sqrt(rowSums(Matrix^2))
+  # guard: ions that are all-zero within the ROI (e.g. ions enriched outside the
+  # ROI) have norm 0 and would produce NaN similarities that crash hclust()
+  row_norms[!is.finite(row_norms) | row_norms == 0] <- 1
   sim <- sweep(Matrix, 1, row_norms, "/")
   sim <- sim %*% t(sim)
   D_sim <- as.dist(1 - sim)
   
-  t <- hclust(D_sim)
-  s <- cutree(t, h = hclust_cutoff)
+  hc <- hclust(D_sim)
+  s <- cutree(hc, h = hclust_cutoff)
   
   name <- as.numeric(names(table(s)[table(s) > min_cluster_size]))
   
@@ -384,27 +462,33 @@ perform_cluster_ions <- function(peak_file, output_file, locindex=NULL, hclust_c
   })
   
   summed_matrices <- lapply(split_matrices, function(subset_matrix) {
-    xxx <- apply(subset_matrix, 1, scale)
-    x <- rowSums(xxx) / ncol(xxx)
-    return(x)
+    # z-score each ion (row) across pixels, then average over the ions of this
+    # cluster for every pixel: the composite image of the cluster.
+    # constant ions (sd = 0) yield NaN in scale(); treat them as zeros
+    z <- t(scale(t(subset_matrix)))
+    z[!is.finite(z)] <- 0
+    colMeans(z)
   })
   
   result_matrix <- do.call(cbind, summed_matrices)
   
   clpan <- cbind.data.frame(x = x, y = y, result_matrix)
   
-  dir.create(folder_name)
+  dir.create(folder_name, showWarnings = FALSE)
   for (i in c(1:length(name))) {
     dfx <- result_matrix[, i]
-    norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
+    rng <- max(dfx) - min(dfx)
+    norm <- if (rng > 0) (dfx - min(dfx)) / rng else rep(0, length(dfx))
     color_palette <- colorRamp(c("skyblue", "red"))
     color_sequence <- rgb(color_palette(norm) / 255, alpha = 1)
     xlim <- max(x) - min(x) + 1
     ylim <- max(y) - min(y) + 1
     
     png(paste0(folder_name,'/cluster', name[i], '.png'), width = xlim, height = ylim)
-    plot.new()
+    # set margins BEFORE plot.new(): with the default margins plot.new() fails
+    # on small canvases ("figure margins too large")
     par(mar = c(0, 0, 0, 0))
+    plot.new()
     plot.window(xlim = c(0, xlim), ylim = c(0, ylim), xaxs = "i", yaxs = "i", asp = NA)
     points(x - min(x) + 1, y - min(y) + 1, pch = 16, col = color_sequence, cex = 0.3)
     dev.off()
@@ -516,11 +600,12 @@ save_ion_images <- function(peak_file, mz_values) {
   height <- max(y) - min(y) + 1
   
   for (i in 1:ncol(dt_filtered)) {
-    dfx <- dt_filtered[, i]
-    norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
+    dfx <- dt_filtered[[i]]
+    rng <- max(dfx) - min(dfx)
+    norm <- if (rng > 0) (dfx - min(dfx)) / rng else rep(0, length(dfx))
     png(paste0(colnames(dt_filtered)[i], '.png'), width = width, height = height)
-    plot.new()
     par(mar = c(0, 0, 0, 0))
+    plot.new()
     plot.window(xlim = c(0, width), ylim = c(0, height), xaxs = "i", yaxs = "i", asp = NA)
     points(x - min(x) + 1, y - min(y) + 1, pch = 16, col = grDevices::gray(1 - norm), cex = 0.3)
     dev.off()
@@ -538,19 +623,25 @@ save_pmd_images <- function(peak_file, pmd_values,filename){
   lowname <- paste0('pmd',col_suffix,'l')
   highname <- paste0('pmd',col_suffix,'h')
   xy <- fread(peak_file)
-  width = diff(range(xy$x))
-  height = diff(range(xy$y))
-  png(filename,width*2, height*2,bg = 'transparent',res = 300)
+  # +1 so the outermost pixels are not clipped, consistent with the other
+  # imaging functions that use max - min + 1
+  width = diff(range(xy$x)) + 1
+  height = diff(range(xy$y)) + 1
+  # guard against "figure margins too large" on small ROIs: the legend panel
+  # uses mar = c(1,0,4,1), whose top margin exceeds a short canvas at 300 dpi
+  png(filename, max(width * 2, 600), max(height * 2, 600), bg = 'transparent', res = 300)
   layout(matrix(c(1, 2), nrow = 1, ncol = 2), widths = c(0.8, 0.2))
-  plot.new()
   par(mar=c(0,0,0,0))
+  plot.new()
   plot.window(xlim = c(0,width), ylim = c(0,height), xaxs = "i", yaxs = "i", asp = NA)
   dfx <- xy[,..lowname][[1]]
-  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx)) *0.5
+  rng <- max(dfx) - min(dfx)
+  norm <- (if (rng > 0) (dfx - min(dfx)) / rng else rep(0, length(dfx))) * 0.5
   # point_colors <- colors_with_alpha[col_index]
   points(xy$x-min(xy$x)+1, xy$y-min(xy$y)+1, pch = 16, col = rgb(1, 0, 0, norm),cex=0.3)
   dfx <- xy[,..highname][[1]]
-  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx)) *0.25
+  rng <- max(dfx) - min(dfx)
+  norm <- (if (rng > 0) (dfx - min(dfx)) / rng else rep(0, length(dfx))) * 0.25
   points(xy$x-min(xy$x)+1, xy$y-min(xy$y)+1, pch = 16, col = rgb(0, 0, 1, norm),cex=0.3)
   par(mar = c(1, 0, 4, 1)) 
   plot.new()
@@ -599,6 +690,14 @@ generate_molecular_network <- function(peak_file, ion_cluster_file, annotation_f
   df$anno2 <- anno$name[match(df$ms2, anno$mz)]
   
   dfanno <- df[complete.cases(df), ]
+  
+  # in untargeted data it is common that no PMD pair has both ends annotated;
+  # writing an empty network file instead of failing on graph construction
+  if (nrow(dfanno) == 0) {
+    message("No PMD pair with both peaks annotated; the network is empty.")
+    fwrite(dfanno, output_file)
+    return(invisible(NULL))
+  }
   
   net <- graph_from_data_frame(dfanno)
   graph <- as_tbl_graph(net)

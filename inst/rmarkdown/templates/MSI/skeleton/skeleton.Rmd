@@ -10,6 +10,9 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
+# NOTE: chunks are NOT evaluated by default (eval = FALSE). This document is a
+# tutorial: set the raw data path in each chunk first, then run the chunks
+# one by one in RStudio (or change eval to TRUE) once the paths are configured.
 knitr::opts_chunk$set(echo = TRUE,eval = FALSE)
 ```
 
@@ -37,8 +40,8 @@ outref = 'refpeak.csv'
 outcoord = 'coord.csv'
 # accept Bruker's lisence
 accept_Bruker_EULA_and_on_Windows_or_Linux = TRUE
-# set the pixel batch size to generate super pixel
-batch_size <- 100000
+# set the pixel batch size to generate super pixel (25000 is optimal for 50GB High-RAM)
+batch_size <- 25000
 # set pixel range
 xrange <- c(3400,3900)
 yrange <- c(1050,1600)
@@ -52,7 +55,7 @@ yrange <- c(1050,1600)
 # - outcoord: The output file for the coordinates. The location of pixels with frame number, x and y location.
 # - xrange: The x-range of the region of interest.
 # - yrange: The y-range of the region of interest.
-getrefpeak(path = path,accept_Bruker_EULA_and_on_Windows_or_Linux = accept_Bruker_EULA_and_on_Windows_or_Linux, batch_size = batch_size, outref = outref, outcoord = outcoord, xrange = xrange,yrange = yrange)
+getrefpeak(path = path,accept_Bruker_EULA_and_on_Windows_or_Linux = accept_Bruker_EULA_and_on_Windows_or_Linux, libpath = libpath, batch_size = batch_size, outref = outref, outcoord = outcoord, xrange = xrange,yrange = yrange)
 ```
 
 ## Reference peak picking
@@ -130,7 +133,8 @@ ccs_tolerance <- 0.03
 # - yrange: The y-range of the region of interest.
 # - mz_ppm: The m/z tolerance in ppm.
 # - ccs_tolerance: The CCS tolerance.
-getqlist(refpath = refpath,lib_path = lib_path, path = path, method = method, zero_proportion_cutoff = zero_proportion_cutoff, coordpath = coordpath, normpath = normpath, xrange = xrange, yrange = yrange, mz_ppm = mz_ppm, ccs_tolerance = ccs_tolerance)
+# - batch_size: The batch size of frames.
+getqlist(refpath = refpath,lib_path = lib_path, path = path, method = method, zero_proportion_cutoff = zero_proportion_cutoff, coordpath = coordpath, normpath = normpath, xrange = xrange, yrange = yrange, mz_ppm = mz_ppm, ccs_tolerance = ccs_tolerance, batch_size = batch_size)
 ```
 
 # Qualitative Peaks List
@@ -153,8 +157,8 @@ annofile = 'annoccs.csv'
 # - mode: The ionization mode ('pos' or 'neg').
 # - peakpath: Path to the peak list file.
 # - annofile: The output file for the annotations. Results contain the database compounds' m/z and ccs in the first two columns and matched m/z and ccs in the reference peaks list. The following three columns contain name, formula, and adducts of this ions.
-# - ppm: annotation mass accuracy for m/z, default 10
-# - deltaccs: annotation ccs shift, default 5 
+# - ppm: annotation mass accuracy for m/z, default 20 (TOF)
+# - deltaccs: annotation absolute CCS shift in Å², default 5 (≈1.5–2.6% over 190–330 Å²)
 getanno(database = database,mode = mode, peakpath = peakpath, annofile = annofile)
 ```
 
@@ -172,8 +176,8 @@ annofile = 'metaannoccs.csv'
 # - mode: The ionization mode ('pos' or 'neg').
 # - peakpath: Path to the peak list file.
 # - annofile: The output file for the annotations. Results contain the database compounds' m/z and ccs in the first two columns and matched m/z and ccs in the reference peaks list. The following three columns contain name, formula, and adducts of this ions.
-# - ppm: annotation mass accuracy for m/z, default 10
-# - deltaccs: annotation ccs shift, default 5 
+# - ppm: annotation mass accuracy for m/z, default 20 (TOF)
+# - deltaccs: annotation absolute CCS shift in Å², default 5 (≈1.5–2.6% over 190–330 Å²)
 getanno(database = database,mode = mode, peakpath = peakpath, annofile = annofile)
 ```
 
@@ -295,13 +299,14 @@ perform_reactomics_analysis("ticmzccs.csv", "reactomics.csv")
 ###  ROI specific reactomics analysis for ions in certain segmentation
 
 ```{r}
-# This function clusters ions within a specific region of interest (ROI). This function will generate images for each clusters to help the user find the optimized cutoff.
+# This function performs ROI specific reactomics analysis (same function with locindex).
 # - "ticmzccs.csv": The input peak file.
 # - "roireactomics.csv": The output file for the reactomics analysis. The first two columns are the locations of pixels and following columns are quantitative results of PMDs. Each PMD contains three columns: one from lower mass, one from higher mass and one for the sum of paired mass to show the locations of PMD.
+# - locindex: the logical index of pixels within the ROI from the segmentation result.
 # loading segmentation result and select roi segmentation class number
 seg <- fread("segmentation.csv")
 locindex <- seg$seg == 4
-perform_roi_reactomics_analysis("ticmzccs.csv", "roireactomics.csv", locindex = locindex)
+perform_reactomics_analysis("ticmzccs.csv", "roireactomics.csv", locindex = locindex)
 ```
 
 ###  Visualization of certain reaction (PMD)
@@ -323,9 +328,10 @@ The input is peak list csv file and annotation csv file, and the output is csv f
 ```{r}
 # This function generates a molecular network.
 # - "ticmzccs.csv": The input peak csv file from quantitative peaks list.
+# - "ioncluster.csv": The ion cluster csv file from the ion cluster step.
 # - "annoccs.csv": The annotation csv file from qualitative peaks list.
 # - "molecular_network.csv": The output file for the molecular network.  The first two columns show the paired peaks of the edge, and the following two columns as m/z of paired peaks with following two columns as original and rounded mass distances. The next column is mass defect of peaks.
-generate_molecular_network("ticmzccs.csv", "annoccs.csv", "molecular_network.csv")
+generate_molecular_network("ticmzccs.csv", "ioncluster.csv", "annoccs.csv", "molecular_network.csv")
 ```
 
 ### MSInet Shiny application
@@ -350,29 +356,27 @@ Please run the following chunk to get figures for ions.
 
 ```{r}
 # m/z and im
-dir.create('fig')
+dir.create('fig', showWarnings = FALSE)
 ions <- unique(c(df$from,df$to))
 mz <- sapply(strsplit(colnames(dt)[-1],'_'),function(x) round(as.numeric(x[1]),4))
 im <- sapply(strsplit(colnames(dt)[-1],'_'),function(x) as.numeric(x[2]))
-ions <- unique(c(df$from,df$to))
 name <- paste0(mz,'_',round(im))
-dt_values <- as.data.frame(dt_values)
 idx <- match(ions,name)+1
-sub <- dt[,..idx]
+sub <- as.data.frame(dt[,..idx])
 colnames(sub) <- ions
 x <- sapply(strsplit(dt$location,'_'),function(x) as.numeric(x[1]))
 y <- sapply(strsplit(dt$location,'_'),function(x) as.numeric(x[2]))
 width=max(x)-min(x)+1
 height=max(y)-min(y)+1
 for(i in 1:ncol(sub)){
-  dfx <- sub[,i]
-  norm <- (dfx - min(dfx)) / (max(dfx) - min(dfx))
-  library(RColorBrewer)
+  dfx <- sub[[i]]
+  rng <- max(dfx) - min(dfx)
+  norm <- if (rng > 0) (dfx - min(dfx)) / rng else rep(0, length(dfx))
   color_palette <- colorRamp(c("skyblue", "red"))
   color_sequence <- rgb(color_palette(norm)/255,alpha=1)
   png(paste0('fig/',colnames(sub)[i],'.png'),width = width, height = height)
-  plot.new()
   par(mar=c(0,0,0,0))
+  plot.new()
   plot.window(xlim = c(0,width), ylim = c(0,height), xaxs = "i", yaxs = "i", asp = NA)
   points(x-min(x)+1, y-min(y)+1, pch = 16, col = color_sequence,cex=0.3)
   dev.off()
@@ -387,373 +391,6 @@ rmwf::runmsinet()
 
 Then you could update network file (msinet.csv), annotation file (annoccs.csv) and images to generate network visualization for biological people.
 
-# Differential analysis
-
-This part will check the changes at peaks level for ion intesnity, ion numbers, as well as ion distances.
-
-## for ions
-
 ```{r}
-library(data.table)
-dt <- fread("ticmzccs.csv",header = T)
-dt_values <- dt[, -1, with = FALSE]
-
-# m/z and im
-mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
-im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
-
-# define pixel level groups, here using segmentation
-seg <- fread('segmentation.csv',header=T)
-library(genefilter)
-re <- colFtests(as.matrix(dt_values),factor(ifelse(seg$umap==2,'islet','non-islet')))
-
-# fold change
-fcall <- c()
-df <- as.matrix(dt_values)
-group <- factor(ifelse(seg$umap==2,'islet','non-islet'))
-for (i in 1:ncol(dt_values)){
-  t <- aggregate(df[,i],by=list(group),mean)
-  fc <- t[1,2]/t[2,2]
-  fcall <- c(fcall,fc)
-}
-fcall[is.na(fcall)] <- 0
-re$adj <- p.adjust(re$p.value,'BH')
-
-# filter with p value and fold change
-sum(re$adj<0.05&!is.na(re$adj)&(fcall>1.5|fcall<0.67))/length(re$adj)
-```
-
-## for ion numbers
-
-```{r}
-library(data.table)
-dt <- fread("ticmzccs.csv",header = T)
-dt[, np := rowSums(.SD != 0)]
-seg <- fread('segmentation.csv',header=T)
-seg$np <- dt$np
-seg$islet <- factor(ifelse(seg$umap==2,'islet','non-islet'))
-library(ggplot2)
-ggplot(seg,aes(np)) +
-  ggtitle('peak number for each pixel')+
-  geom_histogram(binwidth=1)+theme_bw()
-
-dt_values <- as.matrix(dt[, -1, with = FALSE])
-num <- apply(dt_values,2,function(x) sum(x!=0))
-num <- data.frame(num=num)
-ggplot(num,aes(num)) +
-  ggtitle('pixel number for each peaks')+
-  geom_histogram()+theme_bw()
-
-ggplot(seg, aes(x = np, y = islet)) + 
-  ggtitle('pixel number for different group')+
-  geom_density_ridges()+theme_bw()
-# t.test for pixel number
-for(i in c(1:length(unique(seg$pca)))){
-  xyi <- seg[seg$pca==i,]
-  if(length(unique(xyi$islet))>1){
-    print(t.test(xyi$np~xyi$islet))
-  }
-}
-```
-
-## for ion distance
-
-```{r}
-library(distances)
-# Check ion average distance for one group called islet
-dfislet <- dt_values[seg$umap==3,]
-dfnoislet <- dt_values[seg$umap!=3,]
-d2 <- d1 <- c()
-for(i in c(1:length(mz))){
-  xyi <- as.data.frame(seg)[dfislet[,i]!=0,]
-  # set pixel number 0.5-30% of all pixels to ensure sparsity
-  if(nrow(xyi)>0.005*nrow(dfislet)&nrow(xyi)<0.9*nrow(dfislet)){
-    dt <- distances(xyi[,c(1,2)])
-    #d1 <- c(d1,median(dt))
-    d2 <- c(d2,mean(dt))
-  }else{
-    d2 <- c(d2,NA)
-  }
-}
-# Check ion average distance for one group called dfold
-d4 <- d3 <- c()
-for(i in c(1:length(mz))){
-  xyi <- as.data.frame(seg)[dfnoislet[,i]!=0,]
-  # set pixel number 0.5-30% of all pixels to ensure sparsity
-  if(nrow(xyi)>0.005*nrow(dfnoislet)&nrow(xyi)<0.9*nrow(dfnoislet)){
-    dt <- distances(xyi[,c(1,2)])
-    #d1 <- c(d1,median(dt))
-    d4 <- c(d4,mean(dt))
-  }else{
-    d4 <- c(d4,NA)
-  }
-}
-# t test and visulization of differences
-xx <- cbind.data.frame(dis=c(d2,d4),group=c(rep('islet',length(d2)),rep('nosilet',length(d4))))
-library(ggplot2)
-library(ggridges)
-xx <- xx[complete.cases(xx),]
-ggplot(xx, aes(dis,group)) +
-  geom_density_ridges()+theme_bw()
-
-t.test(xx$dis~xx$group)
-```
-
-# Scale the spatial resolution
-
-```{r}
-library(data.table)
-dt <- fread("ticmzccs.csv",header = T)
-dt_values <- dt[, -1, with = FALSE]
-
-# location
-dt$x <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[1]))
-dt$y <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[2]))
-
-x_min <- min(dt$x, na.rm = TRUE)
-x_max <- max(dt$x, na.rm = TRUE)
-y_min <- min(dt$y, na.rm = TRUE)
-y_max <- max(dt$y, na.rm = TRUE)
-
-# scale factor setting
-n <- 5
-new_x_size <- floor((x_max - x_min) / n) + 1
-new_y_size <- floor((y_max - y_min) / n) + 1
-x_new <- seq(x_min, x_max, length.out = new_x_size)
-y_new <- seq(y_min, y_max, length.out = new_y_size)
-new_coords <- as.data.table(expand.grid(x_new, y_new))
-setnames(new_coords, c("x", "y"))
-
-dt[, new_x := round((x - x_min) / n) * n + x_min]
-dt[, new_y := round((y - y_min) / n) * n + y_min]
-
-new_features_dt <- dt[, lapply(.SD, function(x) sum(x, na.rm = TRUE)), by = .(new_x, new_y), .SDcols = -c("location", "x", "y")]
-
-new_features_dt <- new_features_dt[rowSums(new_features_dt[, -c("new_x", "new_y"), with = FALSE]) != 0]
-# generate scaled data and coords
-new_features <- as.matrix(new_features_dt[, -c("new_x", "new_y"), with = FALSE])
-new_coords <- new_features_dt[, .(new_x, new_y)]
-```
-
-# Anatomy co-registration
-
-## MSI2TIC
-
-This step will generate image for MSI with outline for registration purpose.
-
-```{r}
-library(data.table)
-dt <- fread("ticmzccs.csv",header = T)
-df <- dt[, -1, with = FALSE]
-
-# location
-x <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[1]))
-y <- sapply(strsplit(dt$location,'\\_'),function(x) as.numeric(x[2]))
-
-# m/z and im
-mz <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) round(as.numeric(x[1]),4))
-im <- sapply(strsplit(colnames(dt)[-1],'\\_'),function(x) as.numeric(x[2]))
-
-xy <- data.frame(x=x,y=y)
-
-# pixel by pixel for coords
-nxy <- cbind.data.frame(x=xy$x-min(xy$x)+1,y=xy$y-min(xy$y)+1)
-
-# define outline pixels
-outline <- 50
-# fill intensity
-tic <- summarizePixels(one, c(tic="mean"))
-nxy$i <- apply(df,1,sum)
-# add outline
-nnxy <- cbind.data.frame(x=xy$x-min(xy$x)+1+outline,y=xy$y-min(xy$y)+outline+1)
-write.csv(nnxy,'outline.csv')
-
-png("msitic.png", width = max(xy$x)-min(xy$x)+2*outline+1,height = max(xy$y)-min(xy$y)+2*outline+1)
-plot.new()
-par(mar=c(0,0,0,0))
-plot.window(xlim = c(-outline, max(nxy$x)+outline), ylim = c(-outline, max(nxy$y)+outline), xaxs = "i", yaxs = "i", asp = NA)
-points(nxy$x, nxy$y, pch = 16, col = nxy$i,cex=0.3)
-dev.off()
-```
-
-## Geojson2img
-
-This step will adjust geojson from QuPath annotation to the same scale with MSI and output image for registration.
-
-```{r}
-xy <- read.csv('outline.csv',row.names = 1)
-jsonpath <- "outline.geojson"
-geojson <- sf::st_read(jsonpath)
-coords <- sf::st_coordinates(geojson$geometry)
-width <- max(xy$x)-min(xy$x)+1
-height <- max(xy$y)-min(xy$y)+1
-outline <- 50
-rangew <- max(coords[,1])-min(coords[,1])+1
-rangeh <- max(coords[,2])-min(coords[,2])+1
-png("he.png", bg = "transparent",width = width+outline*2,height = height+outline*2)
-par(mar=c(0,0,0,0))
-plot(geojson$geometry,setParUsrBB=T,col = 'green',xlim=c(min(coords[,1])-rangew/width*outline,max(coords[,1])+rangew/width*outline),ylim=c(min(coords[,2])-rangeh/height*outline,max(coords[,2])+rangeh/height*outline))
-dev.off()
-```
-
-## Rotate image
-
-This step will rotate the image for registration.
-
-```{r}
-library(magick)
-new <- image_read("he.png")
-# rotate
-image_rotate(new, 180) %>% image_write("he.png")
-```
-
-## H&EMSIReg
-
-Use simpleITK for registration.
-
-```{r}
-# image_viewer <- ImageViewer()
-# image_viewer$SetApplication('/Applications/ITK-SNAP.app/Contents/MacOS/ITK-SNAP')
-alpha = 0.5
-library(SimpleITK)
-fixed_image <- ReadImage("outline.png", 'sitkFloat32')
-moving_image <- ReadImage("he.png", 'sitkFloat32')
-initial_transform <- CenteredTransformInitializer(fixed_image, 
-                                                  moving_image, 
-                                                  Euler2DTransform(), 
-                                                  "GEOMETRY")
-# initial image
-moving_resampled <- Resample(moving_image, fixed_image, initial_transform)
-registration_method <- ImageRegistrationMethod()
-# Similarity metric settings.
-registration_method$SetMetricAsMattesMutualInformation(numberOfHistogramBins=50)
-registration_method$SetMetricSamplingStrategy("RANDOM")
-registration_method$SetMetricSamplingPercentage(0.01)
-registration_method$SetInterpolator("sitkLinear")
-
-# Optimizer settings.
-registration_method$SetOptimizerAsGradientDescent(learningRate=1.0, numberOfIterations=100, convergenceMinimumValue=1e-6, convergenceWindowSize=10)
-registration_method$SetOptimizerScalesFromPhysicalShift()
-
-# Setup for the multi-resolution framework.            
-registration_method$SetShrinkFactorsPerLevel(shrinkFactors = c(4,2,1))
-registration_method$SetSmoothingSigmasPerLevel(smoothingSigmas=c(2,1,0))
-registration_method$SmoothingSigmasAreSpecifiedInPhysicalUnitsOn()
-
-# Don't optimize in-place, we would possibly like to run this cell multiple times.
-registration_method$SetInitialTransform(initial_transform, inPlace=FALSE)
-final_transform <- registration_method$Execute(fixed_image, moving_image)
-# generate aligned image
-moving_resampled <- Resample(moving_image, fixed_image, final_transform)
-WriteTransform(final_transform, "reg.tfm")
-# WriteImage(moving_resampled, 'age6align.tiff')
-# image_viewer$Execute((1-alpha)*fixed_image + alpha*moving_resampled)
-```
-
-## Coordsreg
-
-This step will convert coords by the registration.
-
-```{r}
-tf <- ReadTransform('reg.tfm')
-fixed_image <- ReadImage("outline.png", 'sitkFloat32')
-# this is the field coords
-coord_transform = SimpleITK::TransformToDisplacementFieldFilter()
-coord_transform$SetReferenceImage(fixed_image)
-coord_transform$SetOutputSpacing(fixed_image$GetSpacing())
-coord_transform$SetOutputOrigin(fixed_image$GetOrigin())
-coord_transform$SetSize(fixed_image$GetSize())
-displacement_field = coord_transform$Execute(tf)
-
-jsonpath <- "outline.geojson"
-library(sf)
-geojson <- sf::st_read(jsonpath)
-
-pixel <- 'outline.csv'
-xy <- read.csv(pixel,row.names = 1)
-
-changexy2 <- function(x){
-  coords <- st_coordinates(x)
-  mt <- coords[,c('X','Y')]
-  width <- max(xy$x)-min(xy$x)+1
-  height <- max(xy$y)-min(xy$y)+1
-  outline <- 50
-  rangew <- max(coords[,1])-min(coords[,1])+1
-  rangeh <- max(coords[,2])-min(coords[,2])+1
-  mt[,1] <- (mt[,1]-min(coords[,1])+1)*width/rangew+outline
-  mt[,2] <- (mt[,2]-min(coords[,2])+1)*height/rangeh+outline
-  mt[,1] <- width+2*outline - mt[,1]
-  mt[,2] <- height+2*outline - mt[,2]
-  fe <- split.data.frame(mt,coords[,'L2'])
-  nmt <- lapply(fe,function(x) list(t(apply(x,1,function(y) y+displacement_field$GetPixel(y)))))
-  nmt
-}
-# perform registration
-re <- changexy2(geojson$geometry)
-# remove wrong annotation
-sfobj <- st_sfc(st_multipolygon(re[-c(153,176,180,189,121)]))
-# get the surrounding pixel with 3 pixel as distance
-sfobjoutline <- st_buffer(sfobj, dist = 3)
-plot(sf::st_geometry(sfobj),setParUsrBB=T,col = 'green')
-# 18,106,122,147,170,175
-# 14,114,137,143,148
-# for(i in c(107:183)) st_sfc(st_multipolygon(re[i]))
-```
-
-## Anno2MSI
-
-This step will map the annotation back to MSI pixel.
-
-```{r}
-## MSI image2json
-pixel <- 'outline.csv'
-pixel_coords <- read.csv(pixel,row.names = 1)
-point <- st_cast(st_sfc(st_multipoint(as.matrix(pixel_coords),dim = 'XY')),"POINT")
-pixel_coords$i <- st_intersects(point, sfobj) %>% lengths > 0
-sum(pixel_coords$i)
-pixel_coords$b <- st_intersects(point, sfobjoutline) %>% lengths > 0
-sum(pixel_coords$b)
-
-num <- rep(NA,length(pixel_coords$x))
-sfobjt <- sfobj[[1]]
-for (i in c(1:length(sfobjt))){
-  x <- unlist(st_intersects(st_polygon(sfobjt[[i]]),point))
-  num[x] <- i
-}
-
-pixel_coords$num <- num
-
-sfobjbu <- sfobjoutline[[1]]
-for (i in c(1:length(sfobjbu))){
-  x <- unlist(st_intersects(st_polygon(sfobjbu[[i]]),point))
-  num[x] <- i
-}
-
-pixel_coords$numb <- num
-
-write.csv(pixel_coords,'anno.csv')
-```
-
-## MSI viz
-
-Display the annotated MSI region.
-
-```{r}
-anno <- read.csv('anno.csv',row.names = 1)
-annomsi <- df[anno$i,]
-library(irlba)
-svd_result <- irlba(df, nv = 20)
-pca_scores <- df %*% svd_result$v
-
-library(ClusterR)
-opt = Optimal_Clusters_KMeans(as.data.frame(pca_scores), max_clusters = 10, plot_clusters = T, criterion = 'silhouette',initializer = 'optimal_init', tol_optimal_init = 0.2)
-km = KMeans_arma(as.matrix(pc_scores), clusters = 2, n_iter = 10, seed_mode = "random_subset", verbose = T, CENTROIDS = NULL)
-pr = predict_KMeans(as.matrix(pc_scores), km)
-plot(xy$x,xy$y,col=pr,cex=.1)
-
-plot(annomsi)
-png("anno.png", bg = "transparent",width = 823,height = 1192)
-par(mar=c(0,0,0,0))
-plot(xy$x,xy$y,col=as.vector(pr),cex=0.01,pch=19)
-dev.off()
+sessionInfo()
 ```
