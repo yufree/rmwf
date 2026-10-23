@@ -1,6 +1,6 @@
 Package: rmwf
 Title: Reproducilble Metabolomics WorkFlow
-Version: 0.1.4
+Version: 0.1.5
 Authors@R: 
     person(given = "Miao",
            family = "Yu",
@@ -13,7 +13,6 @@ Depends: R (>= 3.5.0)
 biocViews:
 Additional_repositories: https://yufree.github.io/drat
 Suggests: IPO,
-        rfigshare,
         stringr,
         UpSetR,
         GO.db,
@@ -31,6 +30,7 @@ Suggests: IPO,
         distances,
         ggridges
 Imports: BiocParallel,
+        curl,
         data.table,
         enviGCMS,
         jsonlite,
@@ -40,4 +40,4 @@ Imports: BiocParallel,
         xcms
 LazyData: true
 LazyDataCompression: xz
-RoxygenNote: 7.3.2
+Config/roxygen2/version: 8.1.1

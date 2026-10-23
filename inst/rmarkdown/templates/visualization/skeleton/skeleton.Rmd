@@ -19,33 +19,12 @@ We prepared 5 NIST 1950 samples and 5 matrix blank samples as demodata.
 
 ```{r}
 library(rmwf)
-# Download demo data from figshare
-library(rfigshare)
-dir.create(file.path('data'), showWarnings = FALSE)
-setwd(file.path('data'))
-# NIST1950 postive data
-dir.create(file.path('NIST1950'), showWarnings = FALSE)
-setwd(file.path('NIST1950'))
-article_id <- 13252196
-details <- fs_details(article_id, mine = FALSE, session = NULL)
-name <- sapply(details$files,function(x) x$name)
-url <- sapply(details$files,function(x) x$download_url)
-download.file(url, name)
-setwd('..')
-# matrix positive data
-dir.create(file.path('Matrix'), showWarnings = FALSE)
-setwd(file.path('Matrix'))
-article_id <- 13252244
-details <- fs_details(article_id, mine = FALSE, session = NULL)
-name <- sapply(details$files,function(x) x$name)
-url <- sapply(details$files,function(x) x$download_url)
-download.file(url, name)
-setwd('..')
-path <- getwd()
-files <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
-basename <- basename(path)
+# Download demo data from Figshare using rmwf
+rmwf::download_figshare(13252196, "data/NIST1950")
+rmwf::download_figshare(13252244, "data/Matrix")
+files <- list.files("data", pattern = '*.mzML', recursive = TRUE, full.names = TRUE)
 group <- xcms:::phenoDataFromPaths(files)$class
-meta <- cbind.data.frame(name=basename,factor=group)
+meta <- cbind.data.frame(name = basename(files), factor = group)
 ```
 
 ## EIC for xcms

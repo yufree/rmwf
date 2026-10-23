@@ -25,35 +25,11 @@ Five SRM 1950 samples and five matrix blank samples were used as demo data in po
 
 ```{r download}
 options(timeout=600)
-# Download data using rfigshare package
-library(rfigshare)
-# create data folder for MS1 positive data
-dir.create(file.path('data'), showWarnings = FALSE)
-setwd(file.path('data'))
-
-# download NIST1950 MS1 positive data into nist1950 folder
-dir.create(file.path('nist1950'), showWarnings = FALSE)
-setwd(file.path('nist1950'))
-article_id <- 13252196
-details <- fs_details(article_id, mine = FALSE, session = NULL)
-name <- sapply(details$files,function(x) x$name)
-url <- sapply(details$files,function(x) x$download_url)
-download.file(url, name, method = 'libcurl')
-
-# download matrix MS1 positive data into matrix folder
-setwd('..')
-dir.create(file.path('matrix'), showWarnings = FALSE)
-setwd(file.path('matrix'))
-article_id <- 13252244
-details <- fs_details(article_id, mine = FALSE, session = NULL)
-name <- sapply(details$files,function(x) x$name)
-url <- sapply(details$files,function(x) x$download_url)
-download.file(url, name, method = 'libcurl')
-setwd('..')
-path <- getwd()
+# Download data from Figshare using rmwf
+rmwf::download_figshare(13252196, "data/nist1950")
+rmwf::download_figshare(13252244, "data/matrix")
 # get the files name of positive MS1 data
-files <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
-setwd('..')
+files <- list.files("data", pattern = '*.mzML', recursive = TRUE, full.names = TRUE)
 ```
 
 The data could be subset by [msconvert](https://proteowizard.sourceforge.io/tools.shtml) to avoid peaks with low quality(co-elution and column washing phase). You need to install [docker](https://www.docker.com/) and pull the docker image from msconvert.The following code will subset the data by retention time from 30 to 930s. More details can be found [online](https://proteowizard.sourceforge.io/tools/msconvert.html).

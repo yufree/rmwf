@@ -279,53 +279,16 @@ list <- list(
 )
 ```
 
-## rfigshare
+## Download demo data from Figshare
 
 ```{r}
-# Download demo data from figshare
-library(rfigshare)
-dir.create(file.path('data'), showWarnings = FALSE)
-setwd(file.path('data'))
-# NIST1950 postive data
-dir.create(file.path('NIST1950'), showWarnings = FALSE)
-setwd(file.path('NIST1950'))
-article_id <- 11952558
-details <- fs_details(article_id)
-name <- sapply(details$files,function(x) x$name)
-url <- sapply(details$files,function(x) x$download_url)
-download.file(url, name)
-setwd('..')
-# matrix positive data
-dir.create(file.path('Matrix'), showWarnings = FALSE)
-setwd(file.path('Matrix'))
-article_id <- 11952561
-details <- fs_details(article_id)
-name <- sapply(details$files,function(x) x$name)
-url <- sapply(details$files,function(x) x$download_url)
-download.file(url, name)
-setwd('..')
-path <- getwd()
-files <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
-# DDA positive data
-setwd('..')
-dir.create(file.path('DDA'), showWarnings = FALSE)
-setwd(file.path('DDA'))
-article_id <- 11952555
-details <- fs_details(article_id)
-name <- sapply(details$files,function(x) x$name)
-url <- sapply(details$files,function(x) x$download_url)
-download.file(url, name)
-path <- getwd()
-ddafile <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
-# PMDDA positive data
-setwd('..')
-dir.create(file.path('PMDDA'), showWarnings = FALSE)
-setwd(file.path('PMDDA'))
-article_id <- 11952549
-details <- fs_details(article_id)
-name <- sapply(details$files,function(x) x$name)
-url <- sapply(details$files,function(x) x$download_url)
-download.file(url, name)
-path <- getwd()
-pmddafile <- list.files(path,pattern = '*.mzML',recursive = T,full.names = T)
+rmwf::download_figshare(11952558, "data/NIST1950")
+rmwf::download_figshare(11952561, "data/Matrix")
+files <- list.files("data", pattern = '*.mzML', recursive = TRUE, full.names = TRUE)
+
+rmwf::download_figshare(11952555, "data/DDA")
+ddafile <- list.files("data/DDA", pattern = '*.mzML', recursive = TRUE, full.names = TRUE)
+
+rmwf::download_figshare(11952549, "data/PMDDA")
+pmddafile <- list.files("data/PMDDA", pattern = '*.mzML', recursive = TRUE, full.names = TRUE)
 ```
